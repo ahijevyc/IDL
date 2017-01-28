@@ -10,8 +10,8 @@ pro ADECK_boxplot
   column = 'AMAX_WIND' ; 'TK_ERR' 'ABS(AMAX_WIND-BMAX_WIND)'
   ; deal with 'tracker' mode and 'tcgen' mode and 'fiorino' variations
   ; 'tracker' mode and 'fiorino' will have '.tracker' and '.fiorino' suffixes.
-  ; 'tcgen' will have no added suffix.
-  misc_str = '.vmax_thresh_kt.ge.00' 
+  ; 'tcgen' will have '.tcgen'.
+  misc_str = '.tcgen' 
   max_vmax_comparison = 0 ; 0=all points along track; 1=one per track
   event_equal = 1 ; event_equal=1 is homogenous
   units = 'm/s'
