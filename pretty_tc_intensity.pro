@@ -22,7 +22,7 @@ pro pretty_TC_intensity, lineplot
   xax.thick=0
   x = xax.xrange[0] + 0.03*(xax.xrange[1] - xax.xrange[0])
   objs = list()
-  fill_color = "light blue"
+  fill_color = lineplot.mapgrid.fill_color
   ts = 34.
   cat1 = 64.
   cat2 = 83.
