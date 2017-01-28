@@ -296,7 +296,8 @@ pro closest_model_skewT, lon, lat, jday, var, var2=var2, entrainment_rate=entrai
   ;basedir='/glade/scratch/ahijevyc/mpex/2013051915/mem9/'
   basedir='/glade/scratch/ahijevyc/mpex/2013051915/mem6/'
   
-  files = file_search(basedir+'wrfout_d03_2013-0?-??_??:??:00')
+  files = file_search(basedir+'wrfout_d03_2013-0?-??_??:??:00', count=nfile)
+  if nfile eq 0 then return
   ipos = transpose(strpos(files, '_d0')+5)
   year = strmid(files,ipos,4)
   month = strmid(files, ipos+5, 2)
@@ -405,7 +406,7 @@ pro skewT_obs
   seedx = 0
   seed=seedx
   if !D.NAME eq 'PS' then device, bits=8, /color, /close
-  debug=0
+  debug=1
   
   if !D.NAME eq 'X' && debug gt 0 then begin
     device, decomposed=0
@@ -414,10 +415,11 @@ pro skewT_obs
   endif
   
   basedir='/glade/p/work/ahijevyc/mpex/May19Upsondes/'
+  basedir='/glade/scratch/ahijevyc/pecan/'
   atmos_const
   syms = list()
   
-  parcel_layer_mb = 50
+  parcel_layer_mb = 25
   
   fractional_fallout = 0
   
@@ -473,7 +475,7 @@ pro skewT_obs
       xstyle=1, ystyle=1, current=pwin ne !NULL, /nodata)
     p3.window.name='xy2'
     
-    files = file_search(basedir+'*_201305*[0-9]', count=nfiles)
+    files = file_search(basedir+'*.cls', count=nfiles)
     for ifile=0,nfiles-1 do begin
       file = files[ifile]
       eol = read_cls_sounding(file, use_first_line=1)
