@@ -25,8 +25,12 @@ function matches_a_best_track, track, best_track=best_track
   basedir = '/glade/p/work/ahijevyc/tracking_'+trackername+'/adeck/'
 
   yyyy = strmid(track.init_date,0,4)
-  ; Just look in vmax_thresh_kt.ge.00 subdirectory. Used to do 34 or 64, but not anymore Oct 25, 2015.
-  searchstr = basedir+track.model_name+'/vmax_thresh_kt.ge.00/a*'+yyyy+'*'+suffix
+
+  ; If trackertype is 'tracker' there should not be any false alarms. All model tracks should be 
+  ; matched to a best track.  But I have made code flexible enough to run on 'tracker' mode 
+  ; output. 
+  ;
+  searchstr = basedir+track.model_name+'/'+track.trackertype+'/a*'+yyyy+'*'+suffix
   adeck_files = file_search(searchstr, count=nfiles)
 
   if nfiles eq 0 then stop
@@ -178,7 +182,7 @@ pro get_all_model_vitals, model_name=model_name, date=date, trackername=trackern
       lon:  reform( mcv_lons[itrack,0:last_itime]),       lat:     reform(mcv_lats[itrack,0:last_itime]), $
       times:reform(mcv_times[itrack,0:last_itime]), intensity:reform(mcv_intensity[itrack,0:last_itime]), $
       specs:specs, model_name:mpas.name, min_duration_days:min_duration_days, in_tropics:in_tropics, $
-      id:mcv_id[itrack], gfdl_warmcore_only:gfdl_warmcore_only}
+      id:mcv_id[itrack], gfdl_warmcore_only:gfdl_warmcore_only, trackertype:trackertype}
 
     ;    for iseg = 0, n_elements(model_tracks[-1].lat)-2 do $
     ;    oplot, model_tracks[-1].lon[iseg:iseg+1], model_tracks[-1].lat[iseg:iseg+1], $
@@ -362,8 +366,11 @@ pro run_get_all_model_vitals, date=date, trackername=trackername, debug=debug, $
     model_name = models[imodel]
     smooth_radius='025'
     grid_dx=0.5
-    smooth_radius_str = strmatch(model_name, 'GFS*') ? '' : string(smooth_radius,format='("_",I3.3,"km")')
-    if strmatch(trackertype, '*_0.25deg') then grid_dx = 0.25
+    smooth_radius_str = string(smooth_radius,format='("_",I3.3,"km")')
+    if strmatch(model_name, 'GFS*') then begin
+      if year ge '2015' then grid_dx=0.25
+      smooth_radius_str = ''
+    endif
     dxdetails = string(grid_dx,format='("_",F5.3,"deg")')+smooth_radius_str
     if debug then print, model_name, dxdetails
     ; If mpas_wp and 2013 start at Sep 1 instead of Aug 10.
