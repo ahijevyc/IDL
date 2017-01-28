@@ -63,6 +63,19 @@ function read_atcf, file, header=header, count=count, storms=uniq_storms, GFDL_w
     FIELDGROUPS:  indgen(43)}
 
   b = ''
+
+  ; Return !NULL if file doesn't exist
+  if not file_test(file) then begin
+    print, 'read_atcf: ',file, ' does not exist!'
+    return, !NULL
+  endif
+
+  ; Return !NULL if zero-size
+  if file_test(file, /zero) then begin
+    print, 'read_atcf: ',file, ' is zero size!'
+    return, !NULL
+  endif
+
   openr, lun, file, /get_lun
   readf, lun, b
   free_lun, lun
@@ -77,11 +90,6 @@ function read_atcf, file, header=header, count=count, storms=uniq_storms, GFDL_w
     stop
   endif
 
-  ; Return !NULL if zero-size
-  if file_test(file, /zero) then begin
-    print, 'read_atcf: ',file, ' is zero size!'
-    return, !NULL
-  endif
   t = read_ascii(file, template=template, header=header, count=count)
 
   if matches_fort64 then begin
@@ -135,8 +143,10 @@ function read_atcf, file, header=header, count=count, storms=uniq_storms, GFDL_w
   endfor
   t = t2
 
-  ; sort by storm number (CY)
-  isort = sort(t.cy)
+  ; sort by basin + storm number (CY)
+  ; Added basin Dec 11 2016. to allow two storms with same storm number
+  ; in different basins.
+  isort = sort(t.basin+t.cy)
   for itag = 0,n_tags(t)-1 do begin
     t.(itag) = (t.(itag))[isort]
   endfor
