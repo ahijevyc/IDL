@@ -27,39 +27,8 @@ pro print_atcf, atcf, atcf_file_in, best_model_track, debug=debug, origmesh=orig
     SW_spd10m  = finite(best_model_track.SW_spd10m[itime]) ? round(best_model_track.SW_spd10m[itime] * km2nm) : 0
     NW_spd10m  = finite(best_model_track.NW_spd10m[itime]) ? round(best_model_track.NW_spd10m[itime] * km2nm) : 0
     RMW        = round(best_model_track.maxr_s10m[itime] * km2nm)
-    if origmesh eq 1 then begin
-      ;print, "lat-lon grid:", max_spd10m, min_mslp, NE_spd10m, SE_spd10m, SW_spd10m, NW_spd10m, RMW, format='(A17,8I5)'
-      ; Replace with values from original MPAS mesh, not the values GFDL tracker
-      ; sees on the smoothed lat-lon grid.      ; 
-      ; 
-      ; COMMMENTED OUT Jan 27 2017.  THINK IT IS ALL DONE IN ADD_VITALS (CALLED BY FIND_MATCHING_MODEL_TRACK.pro)
-      ; AND GET_ALL_MODEL_VITALS.PRO. CAN'T REMEMBER WHY I CALLED FILL_VITALS HERE. IT IS A 2ND TIME AS FAR AS I
-      ; CAN TELL
-;      data = replicate(!VALUES.D_NAN, 1)
-;      vitals = { vmax:{field:'speed10',range:[0, 500],op:'max',data:data} $
-;        ,     mslp: {field:'mslp',               range:[0,500],   op:'min',  data:data} $
-;        ,maxr_s10m: {field:'speed10',            range:[0,500],   op:'maxr', data:data} $
-;        ,NE_spd10m: {field:'speed10',            range:[0,500],   op:'NE17', data:data} $
-;        ,SE_spd10m: {field:'speed10',            range:[0,500],   op:'SE17', data:data} $
-;        ,SW_spd10m: {field:'speed10',            range:[0,500],   op:'SW17', data:data} $
-;        ,NW_spd10m: {field:'speed10',            range:[0,500],   op:'NW17', data:data} $
-;      }
-;      nearestCells = mpas_nearest_cell(lon, lat, mpas)
-;      fill_vitals, mpas, nearestCells, init_date, best_model_track.times[itime], vitals, model_file=model_file
-;      if model_file eq '' then begin
-;        print, "Can't find model file. Perhaps it aged off scratch. If you are running get_all_model_vitals.pro "
-;        print, " you may need to remove the incomplete false alarm file from the tcgen directory. Stopping."
-;        stop
-;      endif
-;      max_spd10m  = round(vitals.vmax.data * meters_per_second2knots)
-;      min_mslp    = round(vitals.mslp.data/100)
-;      NE_spd10m   = finite(vitals.NE_spd10m.data) ? round(vitals.NE_spd10m.data * km2nm) : 0
-;      SE_spd10m   = finite(vitals.SE_spd10m.data) ? round(vitals.SE_spd10m.data * km2nm) : 0
-;      SW_spd10m   = finite(vitals.SW_spd10m.data) ? round(vitals.SW_spd10m.data * km2nm) : 0
-;      NW_spd10m   = finite(vitals.NW_spd10m.data) ? round(vitals.NW_spd10m.data * km2nm) : 0
-;      RMW         = round(vitals.maxr_s10m.data * km2nm)
-      ;print, "diagnostics mesh:", max_spd10m, min_mslp, NE_spd10m, SE_spd10m, SW_spd10m, NW_spd10m, RMW, format='(A17,8I5)'
-    endif
+
+    ; Used to have a block here for origmeshTrue where fill_vitals was called. Don't know why. It was already called.
 
     userdefined='gfdl_warmcore_only ddZ rain'
     dT850 = 0 & dT500 = 0 & dT200 = 0 & ddZ850200 = 0 & rainc = 0 & rainnc = 0
