@@ -5,7 +5,8 @@ function greatest_vital_range, vitals
 end
 
 
-pro fill_vitals, mpas, iCells, init_date, valid_time, vitals, imatch, model_file=model_file
+pro fill_vitals, mpas, iCells, init_date, valid_time, vitals, imatch, model_file=model_file, $
+  model_basedir=model_basedir
   ; INPUT
   ; mpas - Output from mpas_mesh('mpas_xx') function. Information about model grid.
   ;   A structure with tags like .latCell, .areaCell, etc.
@@ -22,6 +23,9 @@ pro fill_vitals, mpas, iCells, init_date, valid_time, vitals, imatch, model_file
   ; imatch - data array elements to which iCells refer to. [obsolete, optional] I think this was useful when processing multiple forecasts and initializations at once.
   ; This routine fills in data[imatch]--one by one, in the case of range>0 or all at once for nearest neighbor.
   ;
+  ; model_basedir (optional)  - where to find model data from which to pull raw mesh vitals.
+  ;     if not provided, or no files are found there, try to find it.
+  ;
   ; OUTPUT
   ; model_file - path and filename of the model forecast
   ;
@@ -35,10 +39,12 @@ pro fill_vitals, mpas, iCells, init_date, valid_time, vitals, imatch, model_file
     stop
   endif
 
-  basedir = ['/glade/p/nmmm0024/','/glade/scratch/mpasrt/'] ; The location of the diag* files is always changing. .. unfortunately
-  model_basedir = basedir + mpas.name + "/" + init_date + '/'
-  ; kludge to look in /rt subdirectory first for Joaquin 2015
-  model_basedir = [model_basedir+'rt/', model_basedir]
+  if ~keyword_set(model_basedir) then begin
+    basedir = ['/glade/p/nmmm0024/','/glade/scratch/mpasrt/'] ; The location of the diag* files is always changing. .. unfortunately
+    model_basedir = basedir + mpas.name + "/" + init_date + '/'
+    ; kludge to look in /rt subdirectory first for Joaquin 2015
+    model_basedir = [model_basedir+'rt/', model_basedir]
+  endif
   init_hh = strmid(init_date,8,2)
   diag_datestr = string(valid_time, format = '( C(CYI4.4,"-",CMOI2.2,"-",CDI2.2,"_",CHI2.2,".",CMI2.2,".00"))')
   model_files = file_search(model_basedir + 'diag*.' + diag_datestr + '.nc*', count=nfiles)
@@ -88,7 +94,7 @@ pro fill_vitals, mpas, iCells, init_date, valid_time, vitals, imatch, model_file
     endif
   endif
   ncid = NCDF_OPEN(model_file)
-  ;print, "fill_vitals: opened "+model_file
+  print, "fill_vitals: opened "+model_file
   ; First find the greatest range.
   greatest_range = greatest_vital_range(vitals)
   ; Make a list of neighbor arrays for the greatest range.
