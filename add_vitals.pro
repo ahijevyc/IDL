@@ -41,6 +41,8 @@ function add_vitals, model_tracks, mpas, origmesh=origmesh
   ; model_tracks was written for get_all_model_vitals, which gives a list of model tracks
   ; find_matching_model_track gives a single track, and it's not a list, just a structure.
   ; fixed this by converting output of find_matching_model_track to a list() 20140718
+  
+  ; First take care of origmesh=False. Don't get original mesh values for this IF block
   if origmesh eq 0 && strmatch(model_tracks[0].tracks_file, '*fort.[5-9]*') then begin
     for itrack=0,ntracks-1 do begin
       model_track = model_tracks[itrack]
@@ -70,7 +72,7 @@ function add_vitals, model_tracks, mpas, origmesh=origmesh
       model_tracks[itrack] = create_struct('origmesh', origmesh, model_tracks[itrack])
     endfor
     return, model_tracks
-  endif
+  endif ; origmesh=False
   
   ; Get vitals from raw mesh (as opposed to fort.66 GFDL tracker output) - MPAS and even GFS!
   for itrack=0,ntracks-1 do begin
@@ -86,7 +88,7 @@ function add_vitals, model_tracks, mpas, origmesh=origmesh
   
   for itime = 0, n_elements(vitals_times)-1 do begin
     vital_itime = where(times eq vitals_times[itime], /null)
-    fill_vitals, mpas, mcv_nearestCells[vital_itime], init_date, vitals_times[itime], vitals, vital_itime
+    fill_vitals, mpas, mcv_nearestCells[vital_itime], init_date, vitals_times[itime], vitals, vital_itime; , model_basedir='/glade/scratch/mpasrt/wp/2016092200/test/'
   endfor
   
   i=0L
