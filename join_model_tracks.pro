@@ -21,6 +21,7 @@ function join_model_tracks, model_tracks, observed_times_in
     if model_track.bdeck_file ne model_track0.bdeck_file then stop
     if model_track.stormname ne model_track0.stormname then stop
     if model_track.min_duration_days ne model_track0.min_duration_days then stop
+    if model_track.GFDL_warmcore_only ne model_track0.GFDL_warmcore_only then stop
   endfor
   
   itrack  = !NULL
@@ -59,7 +60,7 @@ function join_model_tracks, model_tracks, observed_times_in
   model_track = {itrack:itrack, tracks_file:model_track0.tracks_file, init_time:model_track0.init_time, init_date:model_track0.init_date, $
     lon:lons, lat:lats, times:all_times, intensity:intensity, model_name:model_track0.model_name, bdeck_file:model_track0.bdeck_file, $
     stormname:model_track0.stormname, min_duration_days:model_track0.min_duration_days, $
-    id:id}
+    GFDL_warmcore_only:model_track0.GFDL_warmcore_only, id:id}
     
     
     
