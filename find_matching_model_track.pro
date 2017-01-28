@@ -1,6 +1,5 @@
 pro run_find_matching_model_track, debug=debug, force_new=force_new, model=model, basin=basin, $
-  max_vmax_thresh_kt=max_vmax_thresh_kt, year=year, origmesh=origmesh, trackertype=trackertype, $
-  GFDL_warmcore_only=GFDL_warmcore_only
+  year=year, origmesh=origmesh, trackertype=trackertype, GFDL_warmcore_only=GFDL_warmcore_only
   ; Create ADECK files for all the BDECK files in a year.  Can be restricted to a particular basin or
   ; done globally by setting basin to '*'.
   ; BDECK files are best tracks for each tropical storm. I keep them in /glade/p/work/ahijevyc/atcf/b*.dat
@@ -23,14 +22,14 @@ pro run_find_matching_model_track, debug=debug, force_new=force_new, model=model
     if year eq '2015' then models = ['ep', 'wp', 'al', 'GFS']
     if year eq '2016' then models = ['GFS', 'wp', 'al', 'ep']
   endif else models=[model]
-  if n_elements(max_vmax_thresh_kt) eq 0 then max_vmax_thresh_kt = 0.
+
   ; Loop through each model and loop through each best track BDECK.
   for m=0,n_elements(models)-1 do begin
     model = mpas_mesh(models[m])
     if n_elements(origmesh) eq 0 then origmesh=strmatch(model.name, 'GFS*')?0:1
     for ifile = 0, nfiles-1 do find_matching_model_track, files[ifile], model=model, debug=debug, $
-      force_new=force_new, max_vmax_thresh_kt=max_vmax_thresh_kt, origmesh=origmesh, $
-      trackertype=trackertype, GFDL_warmcore_only=GFDL_warmcore_only
+      force_new=force_new, origmesh=origmesh, trackertype=trackertype, $
+      GFDL_warmcore_only=GFDL_warmcore_only
 
   endfor
 
@@ -60,8 +59,7 @@ end
 
 
 pro find_matching_model_track, bdeck_file, model=model, force_new=force_new, debug=debug, $
-  max_vmax_thresh_kt=max_vmax_thresh_kt, origmesh=origmesh, trackertype=trackertype, $
-  GFDL_warmcore_only=GFDL_warmcore_only
+  origmesh=origmesh, trackertype=trackertype, GFDL_warmcore_only=GFDL_warmcore_only
 
   ; for ONE observed best track (BDECK), find all model runs that overlap the time window of the BDECK system.
   ; Find the closest vortex track in each model run and determine if it is close enough to match.
@@ -71,8 +69,8 @@ pro find_matching_model_track, bdeck_file, model=model, force_new=force_new, deb
   if n_elements(trackertype) eq 0 then trackertype = 'tcgen'
   min_duration_days = 1.d  ; minimum duration of model model_track to consider (unless observation is on boundary of model time window)
   if ~keyword_set(force_new) then force_new = 0 ; force_new=1 forces atcf file and vitals save file to be remade.
-  if n_elements(bdeck_file) eq 0 then bdeck_file = '/glade/p/work/ahijevyc/atcf/bep032016.dat'
-  if ~keyword_set(model) then model = mpas_mesh('GFS') else if isa(model,/scalar) then model=mpas_mesh(model)
+  if n_elements(bdeck_file) eq 0 then bdeck_file = '/glade/p/work/ahijevyc/atcf/bwp202016.dat'
+  if ~keyword_set(model) then model = mpas_mesh('wp') else if isa(model,/scalar) then model=mpas_mesh(model)
   total_model_days = strmatch(model.name, 'GFS*') ? 8d : 10d
   if (model.name eq 'mpas15_3') then total_model_days = 3d
   ; If set, GFDL_warmcore_only will make sure at least one time is warm core in the model track
@@ -86,9 +84,12 @@ pro find_matching_model_track, bdeck_file, model=model, force_new=force_new, deb
   tracker = 'gfdl'
   smooth_radius_str = strmatch(model.name, 'GFS*') ? '' : '_025km'
   grid_dx = 0.5
-  if strmatch(trackertype, '*_0.25deg') then grid_dx = 0.25
+  if strmatch(model.name, 'GFS*') then grid_dx = 0.25
   dxdetails = string(grid_dx,format='("_",F5.3,"deg")')+smooth_radius_str
-  if n_elements(max_vmax_thresh_kt) eq 0 then max_vmax_thresh_kt = 0
+  ; Tried requiring model tracks to reach a threshold in order to be a hit.
+  ; Now we let them through and let tc_stat handle weak tracks. 
+  ; That is why we had "vmax_thresh_kt.ge.XX" in the output directory
+  ; structure.  
   if n_elements(origmesh) eq 0 then origmesh=strmatch(model.name,'GFS*')?0:1
   start_new_atcf_output_file=1
 
@@ -119,8 +120,7 @@ pro find_matching_model_track, bdeck_file, model=model, force_new=force_new, deb
   ; if you change "fiorino" path, make sure you also change it where model_tracks_files is
   ; defined below (fort.64 path)
   my_atcf_file = '/glade/p/work/ahijevyc/tracking_'+tracker+'/adeck/'+ model.name + $
-    string(max_vmax_thresh_kt,format='("/vmax_thresh_kt.ge.",I2.2)') + (strmatch(trackertype,'tcgen*')?'':'.tracker') + $
-    '/a' + storm_id + dxdetails +'_'+tracker+ '_origmesh' + (origmesh?'True':'False') + $
+    "/" + trackertype + '/a' + storm_id + dxdetails +'_'+tracker+ '_origmesh' + (origmesh?'True':'False') + $
     string(min_duration_days, format='("_",F3.1,"d_minimum")') + $
     (GFDL_warmcore_only ? '_GFDL_warmcore_only' : '')
 
@@ -147,7 +147,7 @@ pro find_matching_model_track, bdeck_file, model=model, force_new=force_new, deb
 
   ; Find the model tracks files for overlapping model runs for this particular model type and smoothing radius.
   search_str = ['/glade/scratch/ahijevyc/','/glade/scratch/mpasrt/','/glade/p/nmmm0024/']+ $
-    model.name+'/'+year+'[01]?[0-3]?[012]?'+(strmatch(model.name,'GFS*')?'':'/latlon'+dxdetails)+$
+    model.name+'/'+year+'[01][0-9][0-3][0-9][012][0-9]'+(strmatch(model.name,'GFS*')?'':'/latlon'+dxdetails)+$
     '/gfdl_tracker/'+trackertype+'/fort.' + (strmatch(trackertype,'tcgen*')? '66':'64')
   model_tracks_files = file_search(search_str, count=nmodel_tracks_files)
   if nmodel_tracks_files eq 0 then begin
@@ -183,7 +183,7 @@ pro find_matching_model_track, bdeck_file, model=model, force_new=force_new, deb
   for iinit = 0, n_elements(model_tracks_files)-1 do begin
     init_time = model_tracks_file_juldays[iinit]
     init_date = string(init_time, format='(C(CYI4.4, CMoI2.2, CDI2.2, CHI2.2))')
-    ;if init_date ne '2015073100' then continue
+    if init_date ne '2016092200' then continue
 
     ; Read entire atcf file (usually fort.64 or fort.66)
     ; gfdl_m structure will have a 1-D array for each atcf column with lengths equal
@@ -192,7 +192,19 @@ pro find_matching_model_track, bdeck_file, model=model, force_new=force_new, deb
     ; will be used below.
     gfdl_m = read_atcf(model_tracks_files[iinit], lats=mcv_lats, lons=mcv_lons, times=mcv_times, $
       intensity=mcv_intensity, id=mcv_id, GFDL_warmcore_only=GFDL_warmcore_only)
-    if not isa(model,'Anonymous') then stop; make sure model is a structure.
+    ; Be aware of bad tc_vitals files that cause zero lat/lon in GFDL tracker output.
+    ibad_tc_vitals = where(gfdl_m.lat eq 0 and gfdl_m.lon eq 0, /null)
+    if ibad_tc_vitals ne !NULL then begin
+      print, "zero lat/lon in ",model_tracks_files[iinit]," ", $
+        (gfdl_m.basin+gfdl_m.cy)[ibad_tc_vitals], ". Maybe a messed up TCGP "
+      print, "TC vitals file input to GFDL tracker. See Google Doc methodology."
+      ;For tracks after Dec 9, 2016, there should be no issue with multiple instances
+      ;of the same storm. Now wget_tcvitals.csh fixes it.
+      ;However it didn't fix the zeros for al/2015091400/tracker.
+      ; It still gets zeros in lat lon for the first hour for 94L Invest.      
+      ; stop
+    endif
+
 
     matching_model_tracks = LIST()
     ; Loop through each model_track in the model tracks file
@@ -268,11 +280,6 @@ pro find_matching_model_track, bdeck_file, model=model, force_new=force_new, deb
           mcv_times[itrack,imatch]     = observed_time
         endif
 
-        if mcv_lons[itrack, imatch] eq 0 and mcv_lats[itrack, imatch] eq 0 then begin
-          print, "zero lat/lon. Probably a messed up TCGP TC vitals file input to GFDL tracker"
-          print, "see Google Doc methodology"
-          stop
-        endif
         displacement_m = map_2points(observed_lons[itime], observed_lats[itime], mcv_lons[itrack, imatch], mcv_lats[itrack, imatch], /meters)
         ; if this is within the first day of the observed or model track, see if track is close enough to match
         ; or if the observed track hasn't reached TS strength yet, see if track is close enough to match
@@ -282,12 +289,14 @@ pro find_matching_model_track, bdeck_file, model=model, force_new=force_new, deb
           if displacement_m/1000. lt get_time_distance_thresh(forecast_hour) then begin
             ; keep track of the earliest early_distance_match_time
             early_distance_match_time = observed_time
-            if debug ge 1 then print, stormname, mcv_id[itrack], forecast_hour, displacement_m/1000., format='(A," - track ",A," matches at f",i3.3,". Displacement ",F4.0, "km")'
+            if debug ge 1 then print, stormname, mcv_id[itrack], forecast_hour, displacement_m/1000., $
+              format='(A," - track ",A," matches at f",i3.3,". Displacement ",F4.0, "km")'
             break ; this track MATCHES! no need to keep looping through observed times looking for times the model track
             ; is close enough.
           endif
         endif else if early_distance_match_time eq 0 then begin
-          if debug ge 1 then print, 'track ',mcv_id[itrack]+ ' beyond 1 day && Best Track has been TS strength, but still ',string(displacement_m/1000,format='(I0)'), ' km away. Skipping'
+          if debug ge 1 then print, 'track ',mcv_id[itrack]+ ' beyond 1 day && Best Track has been TS strength, but still ',$
+            string(displacement_m/1000,format='(I0)'), ' km away. Skipping'
           break ; if model is beyond 1 day and Best Track has reached TS strength and no match then skip this track
         endif
       endfor ; Loop thru each observed time within the time range of the model run
@@ -308,11 +317,13 @@ pro find_matching_model_track, bdeck_file, model=model, force_new=force_new, deb
           if debug ge 1|| vmd gt 10 then print, stormname, mcv_id[itrack], 'vector motion difference:', vmd, format='(A," - ",A,x,A,F6.2," m/s")'
         endif
 
+        ; If you add another tag, make sure you add it in join_model_tracks.pro also.
         model_track = {itrack:itrack, tracks_file:model_tracks_files[iinit], init_time:init_time, init_date:init_date, $
           early_distance_match_time:early_distance_match_time, id:mcv_id[itrack], $
           lon:  reform(mcv_lons[itrack,0:last_itime]),   lat:     reform(mcv_lats[itrack,0:last_itime]), $
           times:reform(mcv_times[itrack,0:last_itime]), intensity:reform(mcv_intensity[itrack,0:last_itime]), $
-          model_name:model.name, bdeck_file:bdeck_file, stormname:stormname, min_duration_days:min_duration_days}
+          model_name:model.name, bdeck_file:bdeck_file, stormname:stormname, $
+          GFDL_warmcore_only: GFDL_warmcore_only, min_duration_days:min_duration_days}
 
         ; if there is no previous match, start the list
         if matching_model_tracks.count() eq 0 then begin
@@ -367,21 +378,6 @@ pro find_matching_model_track, bdeck_file, model=model, force_new=force_new, deb
       matching_model_track = add_vitals(list(matching_model_track), model, origmesh=origmesh)
       matching_model_track = matching_model_track[0] ; un-"list" matching_model_track.
 
-      ; Hits requirement after Sep 21, 2015.
-      ; Model track must reach max_vmax_thresh_kt at some point to be a hit.
-      ; convert to kts and then round (to replicate print_atcf)
-      if max(round(matching_model_track.max_spd10m / !ATMOS.kts2mps ),/nan) lt max_vmax_thresh_kt then begin
-        print, matching_model_track.id+' never >='+string(max_vmax_thresh_kt, format='(I3," kts")')
-        print, '   '+strmid(file_basename(bdeck_file),1,2)+' '+stormname+ ' '+model.name+' '+ model_tracks_files[iinit]
-        continue ; miss
-      endif else begin
-        ; Requirement after Sep 21, 2015. If model track reaches max_vmax_thresh_kt, but best track
-        ; does not reach max_vmax_thresh_kt during forecast period then skip it. It does not count as a hit
-        ; so it will be counted as a false alarm.
-        iobsHUR = where(observed_times ge init_time and observed_times le (init_time + total_model_days) and observed_vmax ge max_vmax_thresh_kt,/null)
-        if iobsHUR eq !NULL then continue ; no observed max_vmax_thresh_kt during forecast period, so false alarm
-      endelse
-
       if debug eq 0 then begin
         if start_new_atcf_output_file then openw, atcf_lun, my_atcf_file, /get_lun
         start_new_atcf_output_file=0
@@ -398,6 +394,7 @@ pro find_matching_model_track, bdeck_file, model=model, force_new=force_new, deb
   if n_elements(atcf_lun) ne 0 && (fstat(atcf_lun)).open ne 0 then free_lun, atcf_lun
   if n_elements(misses_lun) ne 0 && (fstat(misses_lun)).open ne 0 then free_lun, misses_lun
   plot_storm, my_atcf_file, ofile=my_atcf_file+'.png', title=storm_id+" "+stormname+" "+$
-    tracker+" "+trackertype+" tracks!Cfrom "+model.name+" model. GFDL_warmcore_only="+$
-    strtrim(GFDL_warmcore_only,2)
+    tracker+" "+trackertype+" tracks!Cfrom "+string(grid_dx,format='(F5.3)')+"° "+$
+    model.name+" model. origmesh"+(origmesh?'True':'False')+" GFDL_warmcore_only="+$
+    strtrim(GFDL_warmcore_only,2), force_new=force_new, buffer=1
 end
