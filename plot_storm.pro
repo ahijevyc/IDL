@@ -1,5 +1,5 @@
 pro run_plot_storm, forcenew = force_new
-  files = file_search("/glade/p/work/ahijevyc/tracking_gfdl/adeck/*/vmax_thresh_kt.ge.00*/acp022015*[ym]", count=nfiles)
+  files = file_search("/glade/p/work/ahijevyc/tracking_gfdl/adeck/*/*/a????201*[ym]", count=nfiles)
   for ifile=0,nfiles-1 do plot_storm, files[ifile], ofile=files[ifile]+'.png', /buffer, force_new=force_new
 end
 
@@ -21,13 +21,15 @@ pro plot_storm, adeck_file, bdeck_file=bdeck_file, model=model, ofile=ofile, $
   ;  to # of non-duplicated lines. (not used for some reason)
   ;  mcv_lats, mcv_lons, mcv_times, and mcv_intensity, and mcv_id are 2-d arrays that
   ;  will be used below.
-  ; choose GFDL_warmcore_only=0 because a-decks don't have a warm core column.
+  ; choose GFDL_warmcore_only=0 because a-decks don't generally have a warm core column.
+  ; I added a custom column but only after Nov 2016.
   adeck = read_atcf(adeck_file, lats=lats, lons=lons, times=times, $
     intensity=intensities, id=ids, GFDL_warmcore_only=0) ; adeck atcf in knots and nautical miles
-
+  if adeck eq !NULL then return
+   
   if ~keyword_set(model) then model = adeck.tech[0]
-  if n_elements(buffer) eq 0 then buffer = 0
-  if ~keyword_set(ofile) then ofile = 't.png'
+  if n_elements(buffer) eq 0 then buffer = 1
+  if ~keyword_set(ofile) then ofile = file_dirname(adeck_file)+'/'+file_basename(adeck_file,'.dat')+'.png'
   if n_elements(force_new) eq 0 then force_new = 0
   if file_test(ofile) eq 1 and not force_new then begin
     print, "found "+ofile+". skipping"
@@ -68,14 +70,29 @@ pro plot_storm, adeck_file, bdeck_file=bdeck_file, model=model, ofile=ofile, $
   ineg = where(o lt 0, /null)
   if ineg ne !NULL and (max(o) gt 90 or (min(o) lt -179 and max(o) lt -90)) then o[ineg] = o[ineg] + 360
   limit = [min([observed_lats,min(lats)])-2.5, min(o)-1, max([observed_lats,max(lats)])+1, max(o)+1]
-  map = map('Cylindrical', limit=limit, font_size=10, fill_color='light blue', $
+  ; for JOAQUIN cut 40° from east and 20° from north
+  ; limit = [limit[0],limit[1],limit[2]-8,limit[3]-40]
+  map = map('Cylindrical', limit=limit, font_size=10, fill_color=[235,235,242], $
     margin=[0.08,0.08,0.2,0.15], title=title, layout=[1,2,1], buffer=buffer)
-  grid = map.MAPGRID & grid.thick=0 & grid.linestyle = 'dotted' & grid.LABEL_POSITION = 0
+  grid = map.MAPGRID & grid.thick=1 & grid.color='white'& grid.label_color='black'& grid.LABEL_POSITION = 0
+  grid.Order, /send_to_back
   legend_items = list()
-  track_colors = ['red','blue','green', 'gold', 'light sea green', 'cyan', 'salmon', $
+  track_colors = list('red','blue','green', 'gold', 'light sea green', 'cyan', 'salmon', $
     'pale green', 'silver','yellow','medium orchid','purple','orange','brown','indigo',$
-    'wheat','lime','crimson']
-
+    'wheat','lime','crimson')
+  ; got these RGB triplets from from seaborn module in python
+  ; import seaborn as sns
+  ; import numpy as np
+  ; np.array((sns.color_palette("Set1",n_colors=9))) * 255
+  track_colors = list([ 228.00000161,   26.00000035,   28.00000023],$
+       [  55.08627504,  126.19215697,  183.56863168],$
+       [  77.58823833,  174.23922044,   74.69804242],$
+       [ 153.21177077,   78.5764735 ,  161.08235836],$
+       [ 255.        ,  129.00784317,    0.80000001],$
+       [ 253.25490206,  251.68627456,   50.7843145 ],$
+       [ 167.90588754,   87.0117673 ,   43.55294265],$
+       [ 244.41960847,  129.658831  ,  189.95686662],$
+       [ 153.00000608,  153.00000608,  153.00000608])
   m1 = mapcontinents(fill_color='beige'); tried to run this before tracks but it would omit N. Japan & E. Russia!
   ; even tried variants of /continents, /countries, /hires. IDL is a joke now.
   crud = {sym_filled:1, transparency:0.3, linestyle:'solid', symbol:"circle", $
@@ -92,7 +109,8 @@ pro plot_storm, adeck_file, bdeck_file=bdeck_file, model=model, ofile=ofile, $
 
   foreach id, ids, i do begin
     init_date = strmid(id,0,10)
-    color = track_colors[(legend_items.count()-1) mod n_elements(track_colors)]
+    itrack_color = legend_items.count() mod track_colors.count()
+    color = track_colors[itrack_color]
     thick = 1.1
     sym_size = 0.51
     legend_items.add, plot(lons[i,*], lats[i,*], /data, _extra=crud, thick=thick, color=color, $
@@ -108,6 +126,7 @@ pro plot_storm, adeck_file, bdeck_file=bdeck_file, model=model, ofile=ofile, $
     junk = plot(times[i,*], intensities[i,*], overplot=lineplot, _extra=crud, $
       sym_size=sym_size, thick=thick, color=color, name=init_date)
   endforeach
+  ; bring observed best track time series to front (other time series called 'junk')
   lineplot.Order, /BRING_TO_FRONT
   observed_track = plot(observed_lons, observed_lats, /data, _extra=crud, $
     sym_size=lineplot.sym_size, thick=lineplot.thick, color=lineplot.color, $
