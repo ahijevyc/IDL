@@ -79,12 +79,17 @@ function read_atcf, file, header=header, count=count, storms=uniq_storms, GFDL_w
   openr, lun, file, /get_lun
   readf, lun, b
   free_lun, lun
+  words = strsplit(b,',',/extract)
   matches_fort66 = strmatch(b, '*, *, ????????00_F???_????_?????_*,*') eq 1 || file_basename(file) eq 'fort.66'
-  matches_fort64 = strmatch(b, 'THERMO PARAMS,') eq 1 || file_basename(file) eq 'fort.64'
+  matches_fort64 = strmatch(b, 'THERMO PARAMS,') eq 1 || file_basename(file) eq 'fort.64' || n_elements(words) eq 23
 
   template = adeck_template
   if matches_fort66 then template = fort66_template
   if matches_fort64 then template = fort64_template
+  if not matches_fort66 and not matches_fort64 then begin
+    ;print, 'read_atcf does not recognize ',file,' as fort.64 or fort.66 format'
+    ;print, 'assuming adeck_template will work for read_ascii()'
+  endif
   if not matches_fort66 and not matches_fort64 and GFDL_warmcore_only then begin
     print, 'GFDL_warmcore_only set but no warm core column in ATCF file', file
     stop
