@@ -72,8 +72,14 @@ pro WRFquickview
   basedir='/glade/p/work/ahijevyc/mpex/ensf/2013051915/mem*[6]/'
   basedir='/glade/scratch/ahijevyc/mpex/2013051915/mem[69]/'
   basedir='/glade/p/work/ahijevyc/NCAR_ENSEMBLE_2015/dev/DOMAINS/BMIN_OUTPUT/'
-  infiles = file_search(basedir+'wrfout_d01*_18*00', count=nfiles)
+  basedir='/glade/scratch/ahijevyc/trier/ens_1/'
+  search_str = basedir+'wrfout_d02*_*:00'
+  infiles = file_search(search_str, count=nfiles)
   ;infiles = file_search(basedir+'tmp.nc', count=nfiles)
+  if nfiles eq 0 then begin
+    print, "no files in ", search_str
+    stop
+  endif
   for ifile=0,nfiles-1 do begin
     infile = infiles[ifile]
     print, infile
