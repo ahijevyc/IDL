@@ -1,25 +1,25 @@
-function vitals_structure, dim1, dim2
-  data = n_elements(dim2) ? replicate(!VALUES.D_NAN, dim1, dim2) : replicate(!VALUES.D_NAN, dim1)
+function vitals_structure, ntimes
+  data = replicate(!VALUES.D_NAN, ntimes)
   vitals = {$
-     max_spd10m:{field:'speed10',            range:[0,500],   op:'max',  data:data, format:'(F7.2,$)'} $
-    ,min_mslp:  {field:'mslp',               range:[0,100],   op:'min',  data:data, format:'(F9.2,$)'} $
-    ,maxr_s10m: {field:'speed10',            range:[0,500],   op:'maxr', data:data, format:'(F8.2,$)'} $
-    ,NE_spd10m: {field:'speed10',            range:[0,500],   op:'NE17', data:data, format:'(F8.2,$)'} $
-    ,SE_spd10m: {field:'speed10',            range:[0,500],   op:'SE17', data:data, format:'(F8.2,$)'} $
-    ,SW_spd10m: {field:'speed10',            range:[0,500],   op:'SW17', data:data, format:'(F8.2,$)'} $
-    ,NW_spd10m: {field:'speed10',            range:[0,500],   op:'NW17', data:data, format:'(F8.2,$)'} $
-;    ,t850_core: {field:'temperature_850hPa', range:[0,100],   op:'mean', data:data, format:'(F8.2,$)'} $
-;    ,t500_core: {field:'temperature_500hPa', range:[0,100],   op:'mean', data:data, format:'(F8.2,$)'} $
-;    ,t200_core: {field:'temperature_200hPa', range:[0,100],   op:'mean', data:data, format:'(F8.2,$)'} $
-;    ,t850_surr: {field:'temperature_850hPa', range:[300,500], op:'mean', data:data, format:'(F8.2,$)'} $
-;    ,t500_surr: {field:'temperature_500hPa', range:[300,500], op:'mean', data:data, format:'(F8.2,$)'} $
-;    ,t200_surr: {field:'temperature_200hPa', range:[300,500], op:'mean', data:data, format:'(F8.2,$)'} $
-;    ,z850_core: {field:'height_850hPa',      range:[0,200],   op:'mean', data:data, format:'(F8.2,$)'} $
-;    ,z200_core: {field:'height_200hPa',      range:[0,200],   op:'mean', data:data, format:'(F8.2,$)'} $
-;    ,z850_surr: {field:'height_850hPa',      range:[300,500], op:'mean', data:data, format:'(F8.2,$)'} $
-;    ,z200_surr: {field:'height_200hPa',      range:[300,500], op:'mean', data:data, format:'(F8.2,$)'} $
-;    ,rainc:     {field:'rainc',              range:[0,100],   op:'mean', data:data, format:'(F7.3,$)'} $
-;    ,rainnc:    {field:'rainnc',             range:[0,100],   op:'mean', data:data, format:'(F7.3,$)'} $
+     max_spd10m:{field:'speed10',            range:[0,500],   op:'max',  data:data} $
+    ,min_mslp:  {field:'mslp',               range:[0,100],   op:'min',  data:data} $
+    ,maxr_s10m: {field:'speed10',            range:[0,500],   op:'maxr', data:data} $
+    ,NE_spd10m: {field:'speed10',            range:[0,500],   op:'NE17', data:data} $
+    ,SE_spd10m: {field:'speed10',            range:[0,500],   op:'SE17', data:data} $
+    ,SW_spd10m: {field:'speed10',            range:[0,500],   op:'SW17', data:data} $
+    ,NW_spd10m: {field:'speed10',            range:[0,500],   op:'NW17', data:data} $
+;    ,t850_core: {field:'temperature_850hPa', range:[0,100],   op:'mean', data:data} $
+;    ,t500_core: {field:'temperature_500hPa', range:[0,100],   op:'mean', data:data} $
+;    ,t200_core: {field:'temperature_200hPa', range:[0,100],   op:'mean', data:data} $
+;    ,t850_surr: {field:'temperature_850hPa', range:[300,500], op:'mean', data:data} $
+;    ,t500_surr: {field:'temperature_500hPa', range:[300,500], op:'mean', data:data} $
+;    ,t200_surr: {field:'temperature_200hPa', range:[300,500], op:'mean', data:data} $
+;    ,z850_core: {field:'height_850hPa',      range:[0,200],   op:'mean', data:data} $
+;    ,z200_core: {field:'height_200hPa',      range:[0,200],   op:'mean', data:data} $
+;    ,z850_surr: {field:'height_850hPa',      range:[300,500], op:'mean', data:data} $
+;    ,z200_surr: {field:'height_200hPa',      range:[300,500], op:'mean', data:data} $
+;    ,rainc:     {field:'rainc',              range:[0,100],   op:'mean', data:data} $
+;    ,rainnc:    {field:'rainnc',             range:[0,100],   op:'mean', data:data} $
   }
   return, vitals
 end
@@ -82,24 +82,37 @@ function add_vitals, model_tracks, mpas, origmesh=origmesh
     lons  = [lons, track.lon]
     if track.init_date ne init_date then stop ; sanity check
   endfor
+  ; get unique times in all tracks (not really needed anymore)
+  ; we used to be efficient in how we ran through each diagnostic file only once
+  ; even if multiple storms are in it.
   vitals_times = times[uniq(times,sort(times))]
   vitals = vitals_structure(n_elements(times))
   mcv_nearestCells = mpas_nearest_cell(lons, lats, mpas) ; works with GFS too. 
   
+  ; model_files is a list of files from which the vitals were read for this set of model tracks.
+  model_files = list()
+  ; loop through each vitals time (a unique list of times)
   for itime = 0, n_elements(vitals_times)-1 do begin
+    ; times is an ordered array of concatenated times from all the tracks (with repeats)
+    ; vitals_times has no repeats
+    ; vital_itime will be used to locate the time indicies that match this vitals time.
     vital_itime = where(times eq vitals_times[itime], /null)
-    fill_vitals, mpas, mcv_nearestCells[vital_itime], init_date, vitals_times[itime], vitals, vital_itime; , model_basedir='/glade/scratch/mpasrt/wp/2016092200/test/'
+    fill_vitals, mpas, mcv_nearestCells[vital_itime], init_date, vitals_times[itime], vitals, vital_itime, $
+      model_file=model_file ;  , model_basedir='/glade/scratch/ahijevyc/al/2016092900/'
+    model_files.add, model_file
   endfor
   
   i=0L
   for itrack=0,ntracks-1 do begin
     track = model_tracks[itrack]
     n = total(finite(track.times))
+    ; add each vitals field one at a time to the model track structure
     for itag=0,n_tags(vitals)-1 do begin
       field = (tag_names(vitals))[itag]
       model_tracks[itrack] = create_struct(field, vitals.(itag).data[i:i+n-1], model_tracks[itrack])
     endfor
-    model_tracks[itrack] = create_struct('origmesh', origmesh, model_tracks[itrack])
+    ; tag origmesh and model_files to model track structure
+    model_tracks[itrack] = create_struct('origmesh', origmesh, 'model_files', model_files, model_tracks[itrack])
     i=i+n
   endfor
   
