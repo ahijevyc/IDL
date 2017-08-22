@@ -21,10 +21,10 @@ end
 
 pro make_quickie
 
-  mpass = ['mpas15_3']
+  mpass = ['uni']
 ;  mpass = ['mpas_al','mpas_wp']
   ;mpass=['ep','al']
-  basedir = '/glade/scratch/ahijevyc/'
+  basedir = '/glade/scratch/mpasrt/'
   for impas = 0, n_elements(mpass)-1 do begin
     mpas_name = mpass[impas]
     
@@ -77,7 +77,11 @@ pro make_quickie
       
       cellsOnCell = transpose([[top[*]],[right[*]],[bot[*]],[left[*]]]) + 1 ; cellsOnCell is Fortran 1-based?
     endif else begin
-      initnc_files = file_search(basedir+mpas_name+'/2*00/init.nc',count=nfiles)
+      initnc_files = file_search(basedir+mpas_name+'/2017080400/init.nc',count=nfiles)
+      if nfiles eq 0 then begin
+        print, "did not find init.nc file in", basedir+mpas_name
+        stop
+      endif
       init_info = file_info(initnc_files[0])
       init_size = init_info.size
       for ifile=1,nfiles-1 do begin 
@@ -85,16 +89,19 @@ pro make_quickie
         if init_info.size ne init_size then stop
       endfor
       i = mpas_read(initnc_files[0])
-      latCell = i.latCell
-      lonCell = i.lonCell
-      nEdgesOnCell = i.nEdgesOnCell
-      areaCell = i.areaCell
-      cellsOnCell = i.cellsOnCell
-      landmask = i.landmask ; landmask needed by mpas_water_budget.pro
+      latCell = i.latCell.value
+      lonCell = i.lonCell.value
+      nEdgesOnCell = i.nEdgesOnCell.value
+      areaCell = i.areaCell.value
+      cellsOnCell = i.cellsOnCell.value
+      landmask = i.landmask.value ; landmask needed by mpas_water_budget.pro
+      parent_id = i.parent_id
     endelse
     
-    savfile = '/glade/p/work/ahijevyc/mpas_plots/'+mpas_name+'/'+mpas_name+'_mesh.sav'
-    mpas = {name:mpas_name, lonCell:lonCell, latCell:latCell, nEdgesOnCell:nEdgesOnCell, cellsOnCell:cellsOnCell, areaCell:areaCell, landmask:landmask, savfile:savfile}
+    savfile = '/glade/p/work/ahijevyc/mpas_plots/'+mpas_name+'/'+mpas_name+'.'+parent_id+'_mesh.sav'
+    mpas = {name:mpas_name, lonCell:lonCell, latCell:latCell, $
+      nEdgesOnCell:nEdgesOnCell, cellsOnCell:cellsOnCell, areaCell:areaCell, $
+      landmask:landmask, parent_id:parent_id, savfile:savfile}
     
     save, mpas, filename = savfile
   endfor
