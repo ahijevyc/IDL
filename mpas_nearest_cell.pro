@@ -14,7 +14,7 @@ function mpas_nearest_cell, inlons, inlats, mpas, start=start
   transposed = 0
   if n_elements(lons) gt 1 then begin
     tl = transpose(lons)
-    ; see if transposing results in less distance between consequtive points.
+    ; see if transposing results in less distance between consecutive points.
     if mean(lons[*] - shift(lons[*],1), /nan) gt mean(tl[*] - shift(tl[*],1), /nan) then begin
       ; Since mcv_lons and mcv_lats arrays are tracks and the dimension along each track is the 2nd one, not the first, transpose
       ; so the points vary slowly when you use only 1 subscript.  You want mcv_lons[*] to vary slowly.  Remember to transpose the result!
