@@ -5,11 +5,14 @@ function join_model_tracks, model_tracks, observed_times_in
   ; like when you have radius of 1) 34-knot 2) 50-knot and 3) 64-knot winds
   ;  join_model_tracks() just needs a stack of unique times to interpolate to. Repeated times don't help (or hurt) it.
    
+  ; This sanity check caught a bad bal522016.dat file in which the storm number changed from '52' to '06' for two times.
   if not array_equal(observed_times, observed_times[sort(observed_times)]) then stop ; sanity check - observed_times monotonically ascends
   observed_times = observed_times[uniq(observed_times)] 
 
   ; join the model_tracks from tip to tail and interpolate to observed_times
   
+  ; Make sure tracks_file, init_time, init_date, model_name, bdeck_file, stormname, min_duration_days, and GFDL_warmcore_only
+  ; match for all model_tracks.
   ; removed "specs" keyword Oct 2015
   model_track0 = model_tracks[0]
   for imodel_track=1,model_tracks.count()-1 do begin
