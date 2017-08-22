@@ -28,7 +28,7 @@ function integrate_area, i_in, TvDIF_in, TLV_in, p_in, icb_in, cape, cin, bmin=b
   if nposbuoyancy gt 0 then begin
     ; extract Bmax - if there is positive buoyancy within cloud.
     bmax[i] = max(TvDIF[I,iposbuoyancy],/nan)
-    INB = max(iposbuoyancy)
+    INB = max(iposbuoyancy) ; index of level of neutral buoyancy. highest level with positive buoyancy
     ; find first negatively buoyant parcel level below iNB. This is iLFC-1.
     ; Found strange case where it happens near the tropopause. 
     for iLFC = inb,i+1,-1 do if ~finite(TvDIF[i,iLFC-2]) || TvDIF[i,iLFC-1] le 0.0 && p[iLFC] gt 300 then break
