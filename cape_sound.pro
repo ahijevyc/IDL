@@ -5,7 +5,7 @@ function icef, T
   icef = icef > 0 < 1
   ;    if TC le -10 then return, 1 else return, 0.
   return, icef
-  
+
 end
 
 
@@ -26,7 +26,7 @@ function Tvrt, TKelvin, wkg_per_kg, LW, IW
   eps = !ATMOS.Rd/!ATMOS.Rv
   ; same as wallace and hobbs page 72, but divided numerator and denominator by EPS
   return, T * (1. + w/eps) / (1. + w + LW + IW)
-  
+
 end
 
 function Lf, T
@@ -39,7 +39,7 @@ function Lf, T
   ; for future use below, latent heat of fusion.
   ; Used to have Ci(TC), but Ci needs Kelvin not Celsius. Fixed Feb 2 2015
   Lf = Lf0 + (!ATMOS.CL - Ci(T)) * TC
-  
+
   return, Lf
 end
 
@@ -47,11 +47,11 @@ function ALV, TC
   ; ALV = latent heat of vaporization (temperature dependent)
   ; d(ALV)/dT = !ATMOS.Cpv - !ATMOS.CL (negative quantity) Kirchhoff's equation
   ; ALV = ALV0 + (!ATMOS.Cpv - !ATMOS.CL) * T(degC)
-  
+
   CPVMCL=2320.  ;negative rate of change of latent heat of vaporization w.r.t. temperature
   if CPVMCL ne (!ATMOS.CL - !ATMOS.Cpv) then stop
   ALV=!ATMOS.LV0-CPVMCL*TC
-  
+
   return, ALV
 end
 
@@ -69,9 +69,11 @@ end
 ;   R: Water vapor mixing ratio R (kg H2O per kg of dry air) at the N levels
 ;   Note: Relation between R and specific humidity S: R=S/(1-S)
 ;
-;  OUTPUT PARAMETERS:
-;  Returns maximum convectively available potential energy
-;  in the column
+; INPUT KEYWORDS:
+;  entrainment_rate : entrainment rate in % per km (default 0.0)
+;
+; OUTPUT KEYWORDS:
+;  Set these keywords to named variables in which the following will be returned:
 ;  CAPEP: CAPE of each air parcel based on pseudoadiabatic ascent (instantaneous fallout)
 ;  CAPER: CAPE of each air parcel based on reversible ascent (no fallout)
 ;  CINP: convective inhibition based on pseudoadiabatic ascent
@@ -80,6 +82,9 @@ end
 ;  TvRDIF : virtual temperature of parcel minus virtual temperature of environment (reversible)
 ;  IW: ice water content of pacel at each level
 ;  LW: liquid water content of parcel at each level
+;  Pout: output pressure array with bad values removed
+;  Tout: output temperature array without bad values
+;  Rout: output mixing ratio array without bad values
 ;
 ;
 ; HISTORY:
@@ -93,6 +98,9 @@ end
 ;   added entrainment_rate keyword (% per km)
 ;   added ice keyword ice=1 means include ice effects like latent heat of fusion from freezing or deposition of water
 ;   Dec 2013 replaced internal esa() function with external esat() function
+;   Removed parcel_origin_p keyword in favor of kpar.
+;   Jul 2017 added p, r, t keywords to return altered arrays without bad NaN lines.
+;   Gave up trying to define parcel quantities as parcel_params input. parcel_params is strictly output.
 ;
 
 
@@ -102,26 +110,28 @@ PRO CAPE_SOUND,P_in,T_in,R_in,CAPEP=CAPEP,TVPDIF=TVPDIF,$
   entrainment_rate=entrainment_rate, ice=ice, $
   bminr=bminr,bminp=bminp,plcl=plcl_out,parcel_params=parcel_params, $
   TLVP=TLVP, TLVR=TLVR, TLP=TLP, TLR=TLR, $
-  bmaxr=bmaxr,bmaxp=bmaxp,debug=debug, fractional_fallout=fractional_fallout
-  
+  bmaxr=bmaxr,bmaxp=bmaxp,debug=debug, fractional_fallout=fractional_fallout, $
+  pout=p, tout=t, rout=r
+
   ; check for input
   IF n_params() LT 3 THEN BEGIN
     message,'Usage: Cape_sound,p,T,R'
     stop
   ENDIF
-  p = double(p_in)
-  t = double(t_in)
-  r = double(r_in)
-  
-  
+
+
+  igood = where(finite(p_in) and finite(t_in) and finite(r_in), /NULL)
+  if igood eq !NULL then return
+  p = double(p_in[igood])
+  t = double(t_in[igood])
+  r = double(r_in[igood])
+
   N=n_elements(p)	; number of vertical levels
   IF (n_elements(T) NE N) OR (n_elements(R) NE N) THEN BEGIN
     print,'Error: arrays p,T,R must have same size'
     stop
   ENDIF
-  
-  IF N EQ 0 THEN return
-  
+
   if ~keyword_set(entrainment_rate) then entrainment_rate = 0
   if entrainment_rate lt 0 then stop
   if ~keyword_set(ice) then ice=0
@@ -129,14 +139,14 @@ PRO CAPE_SOUND,P_in,T_in,R_in,CAPEP=CAPEP,TVPDIF=TVPDIF,$
   show_skewt = debug
   ; show_skewT = 1 just show pseudoadiabatic ascent
   ; show_skewT = 2 show reversible ascent too.
-  
-  
-  
+
+
+
   if ~keyword_set(fractional_fallout) then fractional_fallout = 0.d
-  
+
   ; make sure levels go from bottom up (high to low pressure)
   if n gt 1 && p[1] gt p[0] then stop
-  
+
   ; in Kerry Emanuel's code these were initialized to 0.0 - Ahijevych
   TLP=replicate(!VALUES.D_NAN,n,n)
   TLVP=replicate(!VALUES.D_NAN,n,n)
@@ -155,9 +165,13 @@ PRO CAPE_SOUND,P_in,T_in,R_in,CAPEP=CAPEP,TVPDIF=TVPDIF,$
   BMAXR = replicate(!VALUES.D_NAN,n)
   BMAXP = replicate(!VALUES.D_NAN,n)
   PLCL_out  = replicate(!VALUES.D_NAN,n)
-  parcel_params = replicate({p:!VALUES.D_NAN,t:!VALUES.D_NAN,r:!VALUES.D_NAN},n)
-  
-  
+
+  ;parcel_params keyword is an output array of structures, not an input.
+  parcel_params = {p:!VALUES.D_NAN,t:!VALUES.D_NAN,r:!VALUES.D_NAN}
+  ; Make a parcel_params structure for each level.
+  parcel_params = replicate(parcel_params,n)
+
+
   ;
   ;   ***   ASSIGN VALUES OF THERMODYNAMIC CONSTANTS     ***
   ;
@@ -168,10 +182,10 @@ PRO CAPE_SOUND,P_in,T_in,R_in,CAPEP=CAPEP,TVPDIF=TVPDIF,$
   ; !ATMOS.Rv  ; 461.5d elsewhere  ; gas constant water vapor = R*/M_H2O
   ; !ATMOS.Rd  ; 287.04d ; gas constant dry air = R*/M_dry
   ; !ATMOS.LV0=2.501E6  ; ALV at 0degC (J/kg)
-  
+
   EPS=!ATMOS.Rd/!ATMOS.Rv
-  
-  
+
+
   ;
   ;  *** Water vapor pressure EV and saturation vapor pressure ES ***
   ;
@@ -179,7 +193,7 @@ PRO CAPE_SOUND,P_in,T_in,R_in,CAPEP=CAPEP,TVPDIF=TVPDIF,$
   TvEnv = Tvrt(T,R)
   EV=R*P/(EPS+R)	; vapor pressure
   ES=ESAT(TC)	; saturation vapor pressure
-  
+
   if show_skewt gt 0 then begin
     prange=[1020,100]
     skewt, [-35.,45.], everyT=10, everyDA=10, prange=prange, /notitle
@@ -187,38 +201,38 @@ PRO CAPE_SOUND,P_in,T_in,R_in,CAPEP=CAPEP,TVPDIF=TVPDIF,$
     plot_skewt, TC, DwptCs, P, col_t=[254,0,17], col_dewpt=[44,253,43], thick=3.5
     plot_skewt, TvEnv - !CONST.T0, !NULL, P, thick=1, col_t=[254,0,17], linestyle=2
   endif
-  
+
   if n_elements(parcel_layer_mb) eq 0 then parcel_layer_mb=0
   ;
   ;   ***  Begin outer loop, which cycles through parcel origin levels I ***
   ;
   zlow = 0
   zhi  = n/3-1
-  
+
+  ; Limit parcel origin levels to a single level, kpar, if set.
   if n_elements(kpar) gt 0 then begin
     zlow = kpar
     zhi  = kpar
   endif
-  
-  
-  FOR I=zlow,zhi DO BEGIN	; do calculation only for lowest N/3 levels
-  
+
+  ; Range may be a single level if kpar is set, or lowest N/3 levels
+  FOR I=zlow,zhi DO BEGIN	; cycle through parcel origin levels I.
+
     if parcel_layer_mb eq 0 then begin
       parcel_p = p[i]
       parcel_t = t[i]
       parcel_r = r[i]
     endif else begin
-      ; If parcel parameters (T, P, R) are given use those instead of environmental
-      ; parameters. If parcel_layer_mb is given use average of top and bottom of pressure range.
+      ; If parcel_layer_mb is given use average of top and bottom of pressure range.
       ; If bottom of layer is below sounding, don't extrapolate below sounding;
       ;  instead use the first pressure p[0] as the bottom of pressure range and shift top pressure up
       ; so full parcel_layer_mb is used. That's how tlift.f does it.
       pbot = p[0] < (p[i]+parcel_layer_mb/2.)
       ptop = pbot - parcel_layer_mb
       pss = [pbot,ptop]
-      in_between = where(p le pbot and p ge ptop, nin)
+      in_between = where(p lt pbot and p gt ptop, nin) ; changed le and ge to lt and gt - July 9 2017
       if nin gt 0 then pss = [pbot,p[in_between],ptop]
-      
+
       parcel_p = (pbot+ptop)/2.
       temps = interpol(t, p, pss)
       thetas = temps*(1000./pss)^(!ATMOS.Rd/!ATMOS.Cpd)
@@ -226,11 +240,11 @@ PRO CAPE_SOUND,P_in,T_in,R_in,CAPEP=CAPEP,TVPDIF=TVPDIF,$
       dps = pss-shift(pss,-1) & dps = dps[0:-2]
       thetameans = (thetas+shift(thetas,-1))/2. & thetameans=thetameans[0:-2]
       thetamean = total(thetameans*dps)/total(dps); pressure thickness weighted
-      rss = interpol(R, p, pss) 
+      rss = interpol(R, p, pss)
       rmeans = (rss+shift(rss,-1))/2. & rmeans = rmeans[0:-2]
       parcel_r = total(rmeans*dps)/total(dps); pressure thickness weighted
       parcel_t = thetamean*(parcel_p/1000.)^(!ATMOS.Rd/!ATMOS.Cpd)
-      
+
       ; if parcel_p isn't found in pressure array, lift parcel dry
       ; adiabatically to next highest pressure level in pressure array.
       if where(p eq parcel_p, /null) eq !NULL then begin
@@ -238,7 +252,7 @@ PRO CAPE_SOUND,P_in,T_in,R_in,CAPEP=CAPEP,TVPDIF=TVPDIF,$
         parcel_p = p[raise_to+1]
         parcel_t = thetamean*(parcel_p/1000.)^(!ATMOS.Rd/!ATMOS.Cpd)
       endif
-      if debug then begin
+      if show_skewt gt 0 then begin
         tx = temps[0]- !CONST.T0
         dtx = 0.3
         plots, [tx,tx], [ptop,pbot]
@@ -246,7 +260,9 @@ PRO CAPE_SOUND,P_in,T_in,R_in,CAPEP=CAPEP,TVPDIF=TVPDIF,$
         plots, [tx-dtx,tx+dtx], pbot
       endif
     endelse
-    if debug then begin
+
+
+    if show_skewt gt 0 then begin
       plots, tnew(Tvrt(parcel_t,parcel_r)-!CONST.T0, parcel_p), parcel_p, psym=2
       plots, tnew(tmr(parcel_r*1000., parcel_p) - !CONST.T0, parcel_p), parcel_p, psym=2
     endif
@@ -258,18 +274,18 @@ PRO CAPE_SOUND,P_in,T_in,R_in,CAPEP=CAPEP,TVPDIF=TVPDIF,$
     ;parcel_EV=parcel_R*P[i]/(EPS+parcel_R)  ; vapor pressure
     parcel_EV=parcel_R*parcel_P/(EPS+parcel_R)  ; vapor pressure
     parcel_ES=ESAT(parcel_TC) ; saturation vapor pressure
-    
+
     ;RS=EPS*parcel_ES/(P[I]-parcel_ES)
     RS=EPS*parcel_ES/(parcel_P-parcel_ES)
     EM=(parcel_EV GT 1.e-6)*parcel_EV+(parcel_EV LE 1e-6)*1e-6
-    
-    
+
+
     S=(!ATMOS.Cpd+parcel_R*!ATMOS.CL)*ALOG(parcel_T)-!ATMOS.Rd*ALOG(parcel_P-parcel_EV)+$ ; P[I]-parcel_EV)+$
       ALV(parcel_TC)*parcel_R/parcel_T-parcel_R*!ATMOS.Rv*ALOG(EM/parcel_ES)
-      
+
     SP=           !ATMOS.Cpd*ALOG(parcel_T)         -!ATMOS.Rd*ALOG(parcel_P-parcel_EV)+$ ; P[I]-parcel_EV)+$
       ALV(parcel_TC)*parcel_R/parcel_T-parcel_R*!ATMOS.Rv*ALOG(EM/parcel_ES)
-      
+
     ;
     ;   ***   Find lifted condensation pressure PLCL    ***
     ;
@@ -277,9 +293,9 @@ PRO CAPE_SOUND,P_in,T_in,R_in,CAPEP=CAPEP,TVPDIF=TVPDIF,$
     CHI=parcel_T/(1669.0-122.0*RH-parcel_T)
     IF RH eq 0 then pLCL = 0. else pLCL = parcel_P*RH^CHI ; P[I]*RH^CHI
     PLCL_out[i] = PLCL
-    
+
     cloud = RH ge 1. ? 1 : 0
-    
+
     ;
     ;   ***  Begin updraft loop   ***
     ;
@@ -340,7 +356,11 @@ PRO CAPE_SOUND,P_in,T_in,R_in,CAPEP=CAPEP,TVPDIF=TVPDIF,$
           RG=EPS*ENEW/(P[J]-ENEW)
           if abs(S-SG) lt 0.01 then break
         ENDFOR ; K
-        if abs(S-SG) gt 0.01 && p[j] gt 10. then stop
+        if abs(S-SG) gt 0.01 && p[j] gt 10. then begin
+          print, 's and sg did not converge at level',p[j]
+          print, s, sg, s-sg
+          stop
+        endif
         ice_fraction = max([ice_fraction,ice*icef(TG)]); ice is 0 or 1 and can't decrease
         delta_vapor = RG - Rrev
         new_condensate = -delta_vapor
@@ -352,7 +372,7 @@ PRO CAPE_SOUND,P_in,T_in,R_in,CAPEP=CAPEP,TVPDIF=TVPDIF,$
         IW[I,J] = condensate * ice_fraction
         LW[I,J] = condensate * (1-ice_fraction)
         if fractional_fallout then S = (!ATMOS.Cpd+(RG+LW[I,J]+IW[I,J])*!ATMOS.CL)*ALOG(TG)-!ATMOS.Rd*ALOG(P[J]-EM)+ALV(TG-!CONST.T0)*RG/TG
-        
+
         ;amount of ice formed since the last incremental lift
         delta_IW = IW[I,J] - IWlast
         ;latent heat that corresponds to the amount of ice formed
@@ -365,7 +385,7 @@ PRO CAPE_SOUND,P_in,T_in,R_in,CAPEP=CAPEP,TVPDIF=TVPDIF,$
         ;        LW[I,J] = parcel_R - RG
         Rrev = RG ; for entrainment calculation below
         LW[I,J] = LW[i,j] > 0. ; > means take greater of two values.  This removes negatives.
-        IW[I,J] = IW[i,j] > 0. 
+        IW[I,J] = IW[i,j] > 0.
         ;TLVR[I,J]=TG*(1.+Rrev/EPS)/(1.+(Rrev+LW[i,j]+IW[i,j]))
         TLVR[I,J] = Tvrt(TG,Rrev,LW[i,j],IW[i,j])
         TVRDIF[I,J] = TLVR[I,J] - TvEnv[J]
@@ -424,14 +444,14 @@ PRO CAPE_SOUND,P_in,T_in,R_in,CAPEP=CAPEP,TVPDIF=TVPDIF,$
         TVPDIF[I,J] = TLVP[i,j] - TvEnv[J]
         RG0 = RG ; RG0 and TG0 only used in pseudo-adiabatic calculation
         TG0 = TLP[i,j]
-        
-        
+
+
         EM = Rrev*P[j]/(EPS+Rrev)
         RH = EM/ESAT(TLR[i,j]-!CONST.T0)
         ; redo reversible entropy
         S = (!ATMOS.Cpd+(Rrev+LW[I,J]+IW[I,J])*!ATMOS.CL)*ALOG(TLR[I,J])-!ATMOS.Rd*ALOG(P[J]-EM)+ALV(TLR[I,J]-!CONST.T0)*Rrev/TLR[I,J]- Rrev*!ATMOS.Rv*ALOG(RH)
-        
-        
+
+
         EM = RG*P[j]/(EPS+RG)
         RH = EM/ESAT(TLP[i,j]-!CONST.T0)
         if n_elements(CPW) eq 0 then CPW = 0.0
@@ -441,10 +461,10 @@ PRO CAPE_SOUND,P_in,T_in,R_in,CAPEP=CAPEP,TVPDIF=TVPDIF,$
         ;
         CHI=TLR[I,J]/(1669.0-122.0*RH-TLR[I,J])
         pLCL = P[J]*RH^CHI
-        
+
       endif
-      
-      if debug gt 1 && j mod 30 eq 0 then xyouts, 8+!X.CRANGE[1]-entrainment_rate*0,p[j], $
+
+      if show_skewt gt 1 && j mod 30 eq 0 then xyouts, 8+!X.CRANGE[1]-entrainment_rate*0,p[j], $
         string(Rrev*1000, LW[i,j]*1000, Rrev*P[j]/(EPS+Rrev)/ESAT(TLR[I,J]-!CONST.T0)*100,S,format='(3F6.1,F9.1)'), align=1,charsize=0.83, charthick=0.3
       if show_skewt gt 0 then begin
         ;forward_function tnew
@@ -454,18 +474,18 @@ PRO CAPE_SOUND,P_in,T_in,R_in,CAPEP=CAPEP,TVPDIF=TVPDIF,$
     ENDFOR 	; J
     ; remember this will not follow the skew-T pseudoadiabats exactly because of virtual temperature effects
     if show_skewt gt 0 then plot_skewt, TLVP[i,*] - !CONST.T0, !NULL, P, thick=1, col_t=(!D.NAME eq 'X')*255, col_dewpt=222
-    
-    
-    
+
+
+
     ; Integrate area between parcel Tv and environment.
     ;
     ierr = integrate_area(i, tvpdif, TLVP, p, icb, capep, cinp, bmax=bmaxp, bmin=bminp, plot_points=show_skewt gt 0,debug=debug)
     ierr = integrate_area(i, tvrdif, TLVR, p, icb, caper, cinr, bmax=bmaxr, bmin=bminr, plot_points=show_skewt gt 1,debug=debug)
-    
-    
-    
+
+
+
   ENDFOR	; loop over air parcel origins
-  
+
   return
 END
 
@@ -484,9 +504,9 @@ pro some_predict_stuff_using_avg_sndg
   if !D.NAME eq 'PS' then !P.CHARTHICK=2.
   radii = ['lt200km', 'ge200km']
   cloud_types = ['ge-20CIR_']
-  
+
   skewt, [-20.,36.9], everyT=10, everyDA=10
-  
+
   for irad = 0, n_elements(radii) - 1 do begin
     radius = radii[irad]
     for i = 0, n_elements(cloud_types)-1 do begin
@@ -495,14 +515,14 @@ pro some_predict_stuff_using_avg_sndg
       dev = read_ascii('developing_le2days_prior_'+suff)
       all = read_ascii('all_'+suff)
       non = read_ascii('non-developing_'+suff)
-      
+
       ;      skewt, [-20.,36.9], title=cloud_type+" "+radius, everyT=10, everyDA=10
       plot_skewt, non.field1[1,*], non.field1[2,*], non.field1[0,*], col_t=222, col_dewpt=222, thick=4, linestyle=irad
       plot_skewt, dev.field1[1,*], dev.field1[2,*], dev.field1[0,*], col_t=111, col_dewpt=111, thick=4, linestyle=irad
     endfor
-    
+
   endfor
-  
+
   cape_sound,reverse(non.field1[0,*],2),reverse(non.field1[1,*],2),reverse(mixr_sat(non.field1[2,*],non.field1[0,*])/1000.,2), caper=caper, capep=capep
   if !D.NAME eq 'PS' then device, /close
   !P.CHARSIZE = 1.
@@ -516,7 +536,7 @@ pro average_sounding_not_using_avg_sndg
   ; do_all.csh does not average dewpoint the correct way. There's a slight
   ; difference between the 2 methods - the incorrect way looks a little drier above 700mb.
   atmos_const ; define a system variable !atmos with physical constants - Ahijevych
-  
+
   basedir = '/pecan2/ahijevyc/PREDICT/analysis/'
   subdir  = 'entrainment10_ice/0.5rev_fallout/'
   cd, basedir+subdir
@@ -528,9 +548,9 @@ pro average_sounding_not_using_avg_sndg
   nradius = max_radius/delta_radius
   radii = transpose(delta_radius*[lindgen(nradius),1+lindgen(nradius)])
   cloud_type =  'all';'ge-20CIR_'
-  
+
   types = ['developing_le2days_prior', 'non-developing']
-  
+
   for irad = 0, n_elements(radii)/2 - 1 do begin
     min_radius = radii[0,irad]
     max_radius = radii[1,irad]
@@ -571,7 +591,7 @@ pro average_sounding_not_using_avg_sndg
       if type eq 'developing_le2days_prior' then plot_skewt, TempCs, DwptCs, Presss, col_t=111, col_dewpt=111, thick=4, linestyle=irad
     endfor
   endfor
-  
+
 end
 
 
