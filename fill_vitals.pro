@@ -40,7 +40,7 @@ pro fill_vitals, mpas, iCells, init_date, valid_time, vitals, imatch, model_file
   endif
 
   if ~keyword_set(model_basedir) then begin
-    basedir = ['/glade/p/nmmm0024/','/glade/scratch/mpasrt/'] ; The location of the diag* files is always changing. .. unfortunately
+    basedir = ['/glade/scratch/ahijevyc/','/glade/scratch/mpasrt/'] ; The location of the diag* files is always changing. .. unfortunately
     model_basedir = basedir + mpas.name + "/" + init_date + '/'
     ; kludge to look in /rt subdirectory first for Joaquin 2015
     model_basedir = [model_basedir+'rt/', model_basedir]
@@ -52,7 +52,11 @@ pro fill_vitals, mpas, iCells, init_date, valid_time, vitals, imatch, model_file
   ; There were some that needed to be hidden in mpas_ep 20140902-20140909 because relhum was set to zero.
   ; This messed up fcst-init and mpas_ep-mpas statistics but not atcf vitals.
 
-  if nfiles gt 1 then print, 'found ',nfiles,' matching diag* files:',model_files
+  if nfiles gt 1 then begin
+    print, 'fill_vitals: WARNING. found ',strtrim(nfiles,2),' matching diag* files:'
+    print, model_files
+    print, 'using first one'
+  endif
   ; take 1st array element, even if it is just an empty string.
   ; I think this is designed to get the "rt/" version instead of the "./" version
   ; because "rt/" is listed first above (when model_basedir is defined)
@@ -82,32 +86,48 @@ pro fill_vitals, mpas, iCells, init_date, valid_time, vitals, imatch, model_file
     model_file = strmid(model_file,0,ia)+'mpasrt'+strmid(model_file,8+ia)
     if file_test(model_file) ne 1 then begin
       print, "fill_vitals: no " +model_file
-      model_basedir = '/glade/p/nmmm0024/'+mpas.name+'/'+init_date+'/'
-      model_files = file_search(model_basedir + 'diag*.'+diag_datestr+'.nc',count=nfiles)
-      if nfiles eq 0 then begin
-        print, "fill_vitals: no "+model_basedir+"diag*"+diag_datestr+".nc"
-        model_file = ''
-        return
-      endif
-      if nfiles ne 1 then stop ; sanity check
-      model_file = model_files[0]
+      model_file = ''
+      return
     endif
   endif
-  ncid = NCDF_OPEN(model_file)
-  print, "fill_vitals: opened "+model_file
+  
+  
+  
   ; First find the greatest range.
   greatest_range = greatest_vital_range(vitals)
   ; Make a list of neighbor arrays for the greatest range.
+  if n_elements(mpas.LONCELL) gt 800000 then print, "Finding neighbors ",strtrim(greatest_range,2)," km from cell", iCells
   iCell_neighbors = list()
   if greatest_range gt 0 then for iCell = 0, n_elements(iCells)-1 do iCell_neighbors.add, $
     mpas_neighbors(iCells[iCell],mpas.lonCell,mpas.latCell,mpas.nEdgesOnCell,mpas.cellsOnCell, range=greatest_range)
+  ncid = NCDF_OPEN(model_file)
+  print, "fill_vitals: opened "+model_file
+
+  ; Sanity check
+  ; make sure we have the right mpas mesh. with the right latCells, lonCells, etc.
+  ; We have two meshes named 'wp'. One for 2016 and before one for 2017 onward.
+  ; We can differentiate them by their parent_id attribute.  
+  ncdf_attget, ncid, "parent_id", model_file_parent_id, /GLOBAL
+  if strpos(model_file_parent_id, mpas.parent_id) eq -1 then begin
+    print, "looking for mpas parent_id "+mpas.parent_id+" in model file parent_id"
+    print, 'mpas parent_id not in '+model_file_parent_id
+    stop
+  endif
+  
+  got_fields = hash()
   for ifield = 0, nfields-1 do begin
     name = vitals.(ifield).field
     range = vitals.(ifield).range
     op = vitals.(ifield).op
-    ;  print, name, range, op, ncid, ncdf_inquire(ncid)
-    if name eq 'speed10' || name eq 'mse2' || strmatch(mpas.name, 'GFS*') then data = mpas_read(model_file, field=name, ncid=ncid) $
-    else ncdf_varget, ncid , ncdf_varid(ncid, name), data
+    ; print, name, range, op, ncid, ncdf_inquire(ncid)
+    ; If field has been gotten already, use hash value instead of reading again.
+    if got_fields.HasKey(name) then data = got_fields[name] else begin
+      ; If field has not been read, read it from file.
+      if name eq 'speed10' || name eq 'mse2' || strmatch(mpas.name, 'GFS*') then data = mpas_read(model_file, field=name, ncid=ncid) $
+      else ncdf_varget, ncid , ncdf_varid(ncid, name), data
+      ; Add data to hash of got_fields.
+      got_fields[name] = data
+    endelse
 
     if max(range) gt 0 then begin
       for iCell = 0, n_elements(iCells)-1 do begin
@@ -141,7 +161,7 @@ pro fill_vitals, mpas, iCells, init_date, valid_time, vitals, imatch, model_file
           else : stop
         endcase
       endfor ; iCell
-    endif else vitals.(ifield).data[imatch] = data[iCells]
+    endif else vitals.(ifield).data[imatch] = data[iCells] ; else for range=0
 
 
   endfor ; fields
