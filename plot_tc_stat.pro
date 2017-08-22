@@ -25,17 +25,22 @@ pro plot_tc_stat, basin=basin, storm_name=storm_name, buffer=buffer
   column = 'TK_ERR' ; 'TK_ERR' 'ABS(AMAX_WIND-BMAX_WIND)'
   ; if tc_stat_file doesn't exist then try running run_plot_tc_stat below.
   tc_stat_file = basedir + 'METv4.1/' + column +'.tc_stat'
+  tc_stat_file = basedir + 'met-5.2/out/2016/GFSO_0.250deg_gfdl_origmeshFalse_1.0d_minimum_GFDL_warmcore_only.tracker.tcst'
   if ~keyword_set(basin) then basin = ''
   if ~keyword_set(storm_name) then storm_name=''
   if ~keyword_set(buffer) then buffer=0
   t = read_tc_stat(tc_stat_file)
-  ofile = basedir+'tc_stat_'+basin+storm_name+'_'+t.column[0]+'.png'
+  ofile = basedir+'tc_stat_'+basin+storm_name+'_'+column+'.png'
 
   xdim = {name:'LEAD',units:'h'}
   units = 'knots'
-  if t.column[0] eq 'TK_ERR' then units = 'nm'
+  if column eq 'TK_ERR' then units = 'nm'
   ydim = {name:'MEAN',units:units}
   zdim = 'AMODEL'
+
+  xdim = {name:'VALID',units:''}
+  ydim = {name:'TK_ERR',units:units}
+  zdim = 'INIT'
 
 
   tags = tag_names(t)
@@ -44,11 +49,11 @@ pro plot_tc_stat, basin=basin, storm_name=storm_name, buffer=buffer
   izdim = where(tags eq zdim, /null)
   incl  = where(tags eq ydim.name+'_NCL', /null)
   incu  = where(tags eq ydim.name+'_NCU', /null)
-  inval = where(tags eq 'VALID', /null)
+  inVALID = where(tags eq 'VALID', /null)
   zs = t.(izdim)
   zs = zs[uniq(zs, sort(zs))]
   colors = ['blue', 'red', 'green', 'black', 'orange', 'brown', 'pink','yellow','grey','light blue', 'dark green']
-  p = plot([0],/nodata, margin=[0.15,0.15,0.1,0.15], xtitle=xdim.name+' '+xdim.units, ytitle=ydim.name+' '+ydim.units, title=basin+storm_name+" "+t.column[0],buffer=buffer)
+  p = plot([0],/nodata, margin=[0.15,0.15,0.1,0.15], xtitle=xdim.name+' '+xdim.units, ytitle=ydim.name+' '+ydim.units, title=basin+storm_name+" "+column,buffer=buffer)
   ax = p.axes
   ax[0].tickinterval = 24
   ax[0].minor=1
@@ -69,7 +74,7 @@ pro plot_tc_stat, basin=basin, storm_name=storm_name, buffer=buffer
     y   = double((t.(iydim))[izs])
     g = where(finite(y) and finite(y), /null)
     xvalid.add, x[g]
-    valid.add, ((t.(inval))[izs])[g]
+    valid.add, ((t.(inVALID))[izs])[g]
     color.add, colors[0] & colors=shift(colors,-1)
     p = plot(x[g], y[g], overplot=p, color=color[-1], name=z, thick=2)
     if incl ne !NULL then begin
