@@ -19,6 +19,8 @@ function atcf_modelname, inname
       'MPS4': model = 'mpas_ep'
       'GFSO': model = 'GFS'
       'MPAS': model = 'MPAS'
+      '4km': model = 'MPAS'
+      'uni': model = 'MPAS'
       else : stop
     endcase
     out[i] = model
