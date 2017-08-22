@@ -8,12 +8,11 @@ function mpas_read, file, field=field, ncid=ncid
   var_names = list()
   for i=0,n_elements(varids)-1 do var_names.add, (ncdf_varinq(ncid, varids[i])).name
 
-  if var_names.where('relhum_500hPa') ne !NULL then begin
+  if var_names.where('u10') ne !NULL and not strmatch(file, '*init.nc') then begin
     if keyword_set(field) then begin
       if strmatch(field,'speed10',/fold) then begin
-        NCDF_VARGET, ncid, ncdf_varid(ncid,'u10'), u10
-        NCDF_VARGET, ncid, ncdf_varid(ncid,'v10'), v10
-        values = sqrt(u10^2.+v10^2.)
+        ncdf_get, file, ['u10','v10'], t, /struct, /quiet
+        values = sqrt(t.u10.value^2.+t.v10.value^2.)
       endif else if strmatch(field,'mse2',/fold) then begin
         NCDF_VARGET, ncid, ncdf_varid(ncid,'t2'), tempK
         NCDF_VARGET, ncid, ncdf_varid(ncid,'q2'), q
@@ -23,73 +22,80 @@ function mpas_read, file, field=field, ncid=ncid
       if ~keyword_set(ncid) then ncdf_close, ncid
       return, values
     endif
-    NCDF_VARGET, ncid, ncdf_varid(ncid,'u10'), u10
-    NCDF_VARGET, ncid, ncdf_varid(ncid,'v10'), v10
-    speed10 = sqrt(u10^2.+v10^2.)
-    NCDF_VARGET, ncid, ncdf_varid(ncid,'xtime'), xtime
-    NCDF_VARGET, ncid, ncdf_varid(ncid,'rainc'), rainc
-    NCDF_VARGET, ncid, ncdf_varid(ncid,'rainnc'), rainnc
-    NCDF_VARGET, ncid, ncdf_varid(ncid,'lh'), lh
-    NCDF_VARGET, ncid, ncdf_varid(ncid,'precipw'), precipw
-    NCDF_VARGET, ncid, ncdf_varid(ncid,'relhum_500hPa'), relhum_500hPa
-    ; GFS has units of % . But MPAS has 0-1 fraction
-    NCDF_VARGET, ncid, ncdf_varid(ncid,'relhum_700hPa'), relhum_700hPa
-    NCDF_VARGET, ncid, ncdf_varid(ncid,'relhum_850hPa'), relhum_850hPa
-    t = { xtime : xtime, $
-      rainc: rainc, $
-      rainnc: rainnc, $
-      rain:rainc+rainnc, $
-      lh:lh, $
-      u10:u10, v10:v10, speed10:speed10, $
-      precipw: precipw, $
-      relhum_500hPa: relhum_500hPa, $
-      relhum_700hPa: relhum_700hPa, $
-      relhum_850hPa: relhum_850hPa}
+    ncdf_get, file, ['u10','v10','xtime','t2','q2','rainc','rainnc','lh','precipw','relhum_500hPa',$
+      'relhum_700hPa','relhum_850hPa'], t, /struct, gatt=gatt
+
+    ;    NCDF_VARGET, ncid, ncdf_varid(ncid,'u10'), u10
+    ;    NCDF_VARGET, ncid, ncdf_varid(ncid,'v10'), v10
+    ;    speed10 = sqrt(u10^2.+v10^2.)
+    ;    NCDF_VARGET, ncid, ncdf_varid(ncid,'xtime'), xtime
+    ;    NCDF_VARGET, ncid, ncdf_varid(ncid,'rainc'), rainc
+    ;    NCDF_VARGET, ncid, ncdf_varid(ncid,'rainnc'), rainnc
+    ;    NCDF_VARGET, ncid, ncdf_varid(ncid,'lh'), lh
+    ;    NCDF_VARGET, ncid, ncdf_varid(ncid,'precipw'), precipw
+    ;    NCDF_VARGET, ncid, ncdf_varid(ncid,'relhum_500hPa'), relhum_500hPa
+    ;    ; GFS has units of % . But MPAS has 0-1 fraction
+    ;    NCDF_VARGET, ncid, ncdf_varid(ncid,'relhum_700hPa'), relhum_700hPa
+    ;    NCDF_VARGET, ncid, ncdf_varid(ncid,'relhum_850hPa'), relhum_850hPa
+    ;    t = { xtime : xtime, $
+    ;      rainc: rainc, $
+    ;      rainnc: rainnc, $
+    ;      rain:rainc+rainnc, $
+    ;      lh:lh, $
+    ;      u10:u10, v10:v10, speed10:speed10, $
+    ;      precipw: precipw, $
+    ;      relhum_500hPa: relhum_500hPa, $
+    ;      relhum_700hPa: relhum_700hPa, $
+    ;      relhum_850hPa: relhum_850hPa}
 
   endif else if strmatch(file, '*init.nc') then begin
-    ncdf_varget, ncid,  ncdf_varid(ncid,'latCell'), latCell
-    ncdf_varget, ncid,  ncdf_varid(ncid,'lonCell'), lonCell
-    latCell = latCell * !RADEG
-    lonCell = lonCell * !RADEG
-    ncdf_varget, ncid,   ncdf_varid(ncid,'xCell'), xCell
-    ncdf_varget, ncid,   ncdf_varid(ncid,'yCell'), yCell
-    ncdf_varget, ncid,   ncdf_varid(ncid,'zCell'), zCell
-    ncdf_varget, ncid,   ncdf_varid(ncid,'indexToCellID'), indexToCellID
-    ncdf_varget, ncid,  ncdf_varid(ncid,'nEdgesOnCell'), nEdgesOnCell
-    ncdf_varget, ncid,  ncdf_varid(ncid,'areaCell'), areaCell
-    ncdf_varget, ncid,  ncdf_varid(ncid,'cellsOnCell'), cellsOnCell
-    ncdf_varget, ncid,  ncdf_varid(ncid,'ter'), ter
-    ncdf_varget, ncid,  ncdf_varid(ncid,'landmask'), landmask
-    NCDF_VARGET, ncid,  ncdf_varid(ncid,'xtime'), xtime
-    NCDF_VARGET, ncid, ncdf_varid(ncid,'skintemp'), skintemp
-    NCDF_VARGET, ncid, ncdf_varid(ncid,'precipw'), precipw
-    zero = precipw
-    zero[*] = 0.
-    NaN = zero
-    NaN[*] = !VALUES.F_NAN
+    ;    ncdf_varget, ncid,  ncdf_varid(ncid,'latCell'), latCell
+    ;    ncdf_varget, ncid,  ncdf_varid(ncid,'lonCell'), lonCell
+    ;    latCell = latCell * !RADEG
+    ;    lonCell = lonCell * !RADEG
+    ;    ncdf_varget, ncid,   ncdf_varid(ncid,'xCell'), xCell
+    ;    ncdf_varget, ncid,   ncdf_varid(ncid,'yCell'), yCell
+    ;    ncdf_varget, ncid,   ncdf_varid(ncid,'zCell'), zCell
+    ;    ncdf_varget, ncid,   ncdf_varid(ncid,'indexToCellID'), indexToCellID
+    ;    ncdf_varget, ncid,  ncdf_varid(ncid,'nEdgesOnCell'), nEdgesOnCell
+    ;    ncdf_varget, ncid,  ncdf_varid(ncid,'areaCell'), areaCell
+    ;    ncdf_varget, ncid,  ncdf_varid(ncid,'cellsOnCell'), cellsOnCell
+    ;    ncdf_varget, ncid,  ncdf_varid(ncid,'ter'), ter
+    ;    ncdf_varget, ncid,  ncdf_varid(ncid,'landmask'), landmask
+    ncdf_get, file, ['latCell','lonCell','xCell','yCell','zCell','indexToCellID','nEdgesOnCell',$
+      'areaCell', 'cellsOnCell', 'ter', 'landmask', 'xtime','skintemp','precipw'], t, /struct, gatt=gatt
+    t.latCell.value = t.latCell.value * !RADEG
+    t.lonCell.value = t.lonCell.value * !RADEG
+    ;    NCDF_VARGET, ncid,  ncdf_varid(ncid,'xtime'), xtime
+    ;    NCDF_VARGET, ncid, ncdf_varid(ncid,'skintemp'), skintemp
+    ;    NCDF_VARGET, ncid, ncdf_varid(ncid,'precipw'), precipw
+    ;    zero = precipw
+    ;    zero[*] = 0.
+    ;    NaN = zero
+    ;    NaN[*] = !VALUES.F_NAN
 
-    t = { xtime : xtime, $
-      latCell: latCell, $
-      lonCell: lonCell, $
-      xCell : xCell, yCell: yCell, zCell: zCell, $
-      indexToCellID: indexToCellID, $
-      nEdgesOnCell: nEdgesOnCell, $
-      areaCell : areaCell, $
-      cellsOnCell: cellsOnCell, $
-      ter : ter, $
-      landmask : landmask, $
-      rainc : zero, $
-      rainnc: zero, $
-      rain  : zero, $
-      relhum_500hPa : NaN, $
-      relhum_700hPa : NaN, $
-      relhum_850hPa : NaN, $
-      lh:NaN, $
-      skintemp:skintemp, $
-      precipw: precipw}
+    ;    t = { xtime : xtime, $
+    ;      latCell: latCell, $
+    ;      lonCell: lonCell, $
+    ;      xCell : xCell, yCell: yCell, zCell: zCell, $
+    ;      indexToCellID: indexToCellID, $
+    ;      nEdgesOnCell: nEdgesOnCell, $
+    ;      areaCell : areaCell, $
+    ;      cellsOnCell: cellsOnCell, $
+    ;      ter : ter, $
+    ;      landmask : landmask, $
+    ;      rainc : zero, $
+    ;      rainnc: zero, $
+    ;      rain  : zero, $
+    ;      relhum_500hPa : NaN, $
+    ;      relhum_700hPa : NaN, $
+    ;      relhum_850hPa : NaN, $
+    ;      lh:NaN, $
+    ;      skintemp:skintemp, $
+    ;      precipw: precipw}
   endif else if strmatch(file, '*GFS*', /fold) then begin
 
-    ; get 3rd dimension (vertical) of wind at specified height level above ground (m) 
+    ; get 3rd dimension (vertical) of wind at specified height level above ground (m)
     dimid = (ncdf_varinq(ncid,ncdf_varid(ncid,'VGRD_P0_L103_GLL0'))).dim[2]
     ncdf_diminq,ncid,dimid,dimname,dummy
     ; get vertical dimension array
@@ -161,12 +167,12 @@ function mpas_read, file, field=field, ncid=ncid
       ncdf_varget,ncid,dimname,lv
       f = create_struct(f, 'height_'+string(lvl/100,format='(I3.3)'), height[*,*,where(lv eq lvl, /null)])
     endforeach
-    
+
     ; Kind of a kludge - GFS forecasts are a mixture of 3-h and 6-h averages/accumulations
-    ; depending on whether the forecast hour is a multiple of 6 or not. 
+    ; depending on whether the forecast hour is a multiple of 6 or not.
     ; Instead of figuring out how to deal with 3-h averages/accumulations, just get 6-h accum.
-    ; Another difference is this is accumulated precipitation since 6 hours ago, unlike MPAS 
-    ; rain, which is accumulation since model initializatoin time.  Must deal with this later, 
+    ; Another difference is this is accumulated precipitation since 6 hours ago, unlike MPAS
+    ; rain, which is accumulation since model initializatoin time.  Must deal with this later,
     ; outside this function.
     rain6h = !VALUES.F_NAN
     if ncdf_varid(ncid, 'APCP_P8_L1_GLL0_acc6h') ne -1 then ncdf_varget,ncid,ncdf_varid(ncid,'APCP_P8_L1_GLL0_acc6h'),rain6h
@@ -178,12 +184,17 @@ function mpas_read, file, field=field, ncid=ncid
     if ncdf_varid(ncid, 'LHTFL_P8_L1_GLL0_avg6h') ne -1 then ncdf_varget,ncid,ncdf_varid(ncid,'LHTFL_P8_L1_GLL0_avg6h'),lh6h
     f = create_struct(f, 'lh', lh6h)
 
-    
+
     if keyword_set(ncid) eq 0 then ncdf_close, ncid
     return, keyword_set(field) ? get_structure_tag(f,field) : f
 
   endif
   if keyword_set(ncid) eq 0 then NCDF_CLOSE, ncid
+  
+  ; Extract parent_id attribute
+  parent_id = strsplit(gatt.parent_id, string(10b), /extract) ; split at newlines \n or string(10b)
+  parent_id = parent_id[-1]
+  t = create_struct('parent_id', parent_id, t)
 
   if keyword_set(field) then return, t.(where(strmatch(tag_names(t), field, /fold)))
 
