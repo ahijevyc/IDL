@@ -1,7 +1,8 @@
-pro print_atcf, atcf, atcf_file_in, best_model_track, debug=debug, origmesh=origmesh
+pro print_atcf, atcf, atcf_file_in, best_model_track, debug=debug
   if ~keyword_set(debug) then debug=0
-  if n_elements(origmesh) eq 0 then origmesh=strmatch(best_model_track.model_name, 'GFS', /fold)?0:1
   atcf_file = file_basename(atcf_file_in)
+  ; un-"list" matching_model_track.
+  if isa(best_model_track,'List') then best_model_track = best_model_track[0]
   model_abbrev = atcf_modelname(best_model_track.model_name)
   ; basin equals characters 2-3 of atcf filename
   basin = strmid(atcf_file,1,2)
@@ -22,13 +23,12 @@ pro print_atcf, atcf, atcf_file_in, best_model_track, debug=debug, origmesh=orig
     EW = lon ge 0 ? 'E' : 'W'
     max_spd10m = round(best_model_track.max_spd10m[itime] * meters_per_second2knots)
     min_mslp   = round(best_model_track.min_mslp[itime]/100)
+    ; Print NaNs as zeros. Convert km to nm, rounding to the nearest nm.
     NE_spd10m  = finite(best_model_track.NE_spd10m[itime]) ? round(best_model_track.NE_spd10m[itime] * km2nm) : 0
     SE_spd10m  = finite(best_model_track.SE_spd10m[itime]) ? round(best_model_track.SE_spd10m[itime] * km2nm) : 0
     SW_spd10m  = finite(best_model_track.SW_spd10m[itime]) ? round(best_model_track.SW_spd10m[itime] * km2nm) : 0
     NW_spd10m  = finite(best_model_track.NW_spd10m[itime]) ? round(best_model_track.NW_spd10m[itime] * km2nm) : 0
     RMW        = round(best_model_track.maxr_s10m[itime] * km2nm)
-
-    ; Used to have a block here for origmeshTrue where fill_vitals was called. Don't know why. It was already called.
 
     userdefined='gfdl_warmcore_only ddZ rain'
     dT850 = 0 & dT500 = 0 & dT200 = 0 & ddZ850200 = 0 & rainc = 0 & rainnc = 0
