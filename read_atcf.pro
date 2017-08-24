@@ -96,29 +96,25 @@ function read_atcf, file, header=header, count=count, storms=uniq_storms, GFDL_w
   endif
 
   t = read_ascii(file, template=template, header=header, count=count)
+  t = dictionary(t)
 
   if matches_fort64 then begin
     storm_spd_ms = replicate(!VALUES.F_NAN, count)
     stormname = replicate('', count)
-    t = create_struct('stormname', stormname, t)
+    t['stormname'] = stormname
   endif else begin
     ; fort.66 storm speed in tenths of meters per second and adeck in knots.
     storm_spd_ms = matches_fort66 ? t.stmspd/10. : t.speed * !ATMOS.kts2mps
 
     ibad = where(strmatch(t.stormname, '*   NaN') ne 0, nbad)
-    if nbad gt 0 then t.stormname[ibad] = strtrim(t.cy[ibad], 2)
+    if nbad gt 0 then t['stormname', ibad] = strtrim(t.cy[ibad], 2)
   endelse
 
 
   ; If tech is defined just get that model. tech is another word for model name.
-  ; Can't truncate an array in a structure (t). That's why I created a new structure t2.
   if keyword_set(tech) then begin
-    t2 = {}
     i = where(t.tech eq tech, /null)
-    for itag = 0,n_tags(t)-1 do begin
-      t2 = create_struct((tag_names(t))[itag], (t.(itag))[i], t2)
-    endfor
-    t = t2
+    foreach x,t,key do t[key] = t[key,i]
   endif
 
 
@@ -135,39 +131,34 @@ function read_atcf, file, header=header, count=count, storms=uniq_storms, GFDL_w
   if n gt 0 then lat[i] = -lat[i]
   i = where(strmid(t.lonew, 0, /reverse_offset) eq 'W', n)
   if n gt 0 then lon[i] = -lon[i]
-  t = create_struct('yyyy', yyyy, 'mm', mm, 'dd', dd, 'hh', hh, 'julday', initdate + t.tau/24d, $
-    'lat', lat, 'lon', lon, 'storm_spd_ms', storm_spd_ms, t)
+  t['yyyy'] = yyyy
+  t['mm'] = mm
+  t['dd'] = dd
+  t['hh'] = hh
+  t['julday'] = initdate + t.tau/24d
+  t['lat'] = lat
+  t['lon'] = lon
+  t['storm_spd_ms'] = storm_spd_ms
 
   ; remove other maximum radius of winds besides 34 knots.
   ; Maybe I'll need these down the line but they have caused more trouble than they are worth
-  ; Can't truncate an array in a structure (t). That's why I created a new structure t2.
-  t2 = {}
   i34 = where(t.rad eq 0 or t.rad eq 34, n34, /null) ; had "and warmcore_check" for a while but it stripped all cold-core times! not wanted.
-  for itag = 0,n_tags(t)-1 do begin
-    t2 = create_struct((tag_names(t))[itag], (t.(itag))[i34], t2)
-  endfor
-  t = t2
+  foreach x,t,key do t[key] = t[key,i34]
 
   ; sort by basin + storm number (CY)
   ; Added basin Dec 11 2016. to allow two storms with same storm number
   ; in different basins.
   isort = sort(t.basin+t.cy)
-  for itag = 0,n_tags(t)-1 do begin
-    t.(itag) = (t.(itag))[isort]
-  endfor
+  foreach x,t,key do t[key] = t[key, isort]
 
 
   ; filter out repeats in bdecks and adecks
   ; used to not filter out repeats in fort.64 and fort.66, but why not? You certainly don't need erroneous repeats
   ; and you don't even need the multiple wind threshold lines.  Fixed Mar 14, 2016
-  t2 = {}
   ; used to not have t.tau. but need it for reading my adeck files. added 20151130
   ; used to not have t.basin either but need it to differentiate storms in different basins with same storm number
   iuniq = uniq(t.basin + t.cy + t.init_YYYYMMDDHH + strtrim(t.tau,2))
-  for itag = 0,n_tags(t)-1 do begin
-    t2 = create_struct((tag_names(t))[itag], (t.(itag))[iuniq], t2)
-  endfor
-  t = t2
+  foreach x,t,key do t[key] = t[key, iuniq]
 
 
 
