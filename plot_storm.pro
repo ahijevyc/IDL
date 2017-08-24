@@ -46,7 +46,8 @@ pro plot_storm, adeck_file, bdeck_file=bdeck_file, model=model, ofile=ofile, $
 
   ii = where(adeck.tech ne model.name, /null)
   if ii ne !null then begin
-    print, 'adeck.tech not equal to model.name '+ adeck.tech[0] +' ' + model.name
+    print, 'adeck.tech not equal to model.name'
+    print, 'adeck tech = ' + adeck.tech[0] +', model.name=' + model.name
     stop
   endif
 
