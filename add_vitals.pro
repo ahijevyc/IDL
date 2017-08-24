@@ -44,8 +44,7 @@ function add_vitals, model_tracks, mpas, origmesh=origmesh
   
   ; First take care of origmesh=False. Don't get original mesh values for this IF block
   if origmesh eq 0 && strmatch(model_tracks[0].tracks_file, '*fort.[5-9]*') then begin
-    for itrack=0,ntracks-1 do begin
-      model_track = model_tracks[itrack]
+    foreach model_track, model_tracks, itrack do begin
       t = read_atcf(model_track.tracks_file) ; read_atcf returns 'vmax' tag in knots and mslp in hPa
       nm2km = 1.852
       ig = !NULL ; find all matching ids in the fort.66 file so we can grab the vmax and mslp
@@ -70,7 +69,7 @@ function add_vitals, model_tracks, mpas, origmesh=origmesh
         model_tracks[itrack] = create_struct(field, vitals.(itag).data, model_tracks[itrack])
       endfor
       model_tracks[itrack] = create_struct('origmesh', origmesh, model_tracks[itrack])
-    endfor
+    endforeach 
     return, model_tracks
   endif ; origmesh=False
   
@@ -95,9 +94,9 @@ function add_vitals, model_tracks, mpas, origmesh=origmesh
   for itime = 0, n_elements(vitals_times)-1 do begin
     ; times is an ordered array of concatenated times from all the tracks (with repeats)
     ; vitals_times has no repeats
-    ; vital_itime will be used to locate the time indicies that match this vitals time.
-    vital_itime = where(times eq vitals_times[itime], /null)
-    fill_vitals, mpas, mcv_nearestCells[vital_itime], init_date, vitals_times[itime], vitals, vital_itime, $
+    ; vital_itimes will be used to locate the time indicies that match this vitals time.
+    vital_itimes = where(times eq vitals_times[itime], /null)
+    fill_vitals, mpas, mcv_nearestCells[vital_itimes], init_date, vitals_times[itime], vitals, vital_itimes, $
       model_file=model_file ;  , model_basedir='/glade/scratch/ahijevyc/al/2016092900/'
     model_files.add, model_file
   endfor
