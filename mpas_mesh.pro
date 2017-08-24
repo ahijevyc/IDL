@@ -21,20 +21,30 @@ end
 
 pro make_quickie
 
-  mpass = ['uni']
+  mpass = ['GFS']
 ;  mpass = ['mpas_al','mpas_wp']
   ;mpass=['ep','al']
-  basedir = '/glade/scratch/mpasrt/'
+  basedir = '/glade/scratch/ahijevyc/'
   for impas = 0, n_elements(mpass)-1 do begin
     mpas_name = mpass[impas]
     
-    if mpas_name eq 'GFS004' || mpas_name eq 'mpas_ep-mpas' then begin
-      if mpas_name eq 'GFS004' then begin
+    if STRMATCH(mpas_name, 'GFS*') || mpas_name eq 'mpas_ep-mpas' then begin
+      if mpas_name eq 'GFS_0p50' then begin
         ncid = ncdf_open(basedir+mpas_name+'/2013081000/20130810_i00_f000_GFS004.nc')
         ncdf_varget, ncid, ncdf_varid(ncid, 'lon_0'), lon
         ncdf_varget, ncid, ncdf_varid(ncid, 'lat_0'), lat
         result = ncdf_varinq(ncid, ncdf_varid(ncid,'VGRD_P0_L103_GLL0')); float VGRD_P0_L103_GLL0(lv_HTGL9, lat_0, lon_0)
         if not array_equal(result.dim, [ncdf_dimid(ncid,'lon_0'),ncdf_dimid(ncid,'lat_0'),ncdf_dimid(ncid,'lv_HTGL9')]) then stop
+        landmask = replicate(0, [lon.length, lat.length])
+      endif
+      if mpas_name eq 'GFS' then begin
+        ncid = ncdf_open(basedir+mpas_name+'/2017082000/gfs.t00z.pgrb2.0p25.f000.nc')
+        ncdf_varget, ncid, ncdf_varid(ncid, 'lon_0'), lon
+        ncdf_varget, ncid, ncdf_varid(ncid, 'lat_0'), lat
+        result = ncdf_varinq(ncid, ncdf_varid(ncid,'VGRD_P0_L103_GLL0')); float VGRD_P0_L103_GLL0(lv_HTGL9, lat_0, lon_0)
+        if not array_equal(result.dim, [ncdf_dimid(ncid,'lon_0'),ncdf_dimid(ncid,'lat_0'),ncdf_dimid(ncid,'lv_HTGL7')]) then stop
+        parent_id = '0p25'
+        landmask = replicate(0, [lon.length, lat.length])
       endif
       if mpas_name eq 'mpas_ep-mpas' then begin
         ncid = ncdf_open(basedir+'mpas_ep/2014081000/latlon_0.500deg_025km/diagnostics.2014-08-16_18.00.00_0.500deg_025km.nc')
