@@ -1,9 +1,12 @@
-function mpas_mesh, mpas_name, nomesh=nomesh
+function mpas_mesh, mpas_name, nomesh=nomesh, parent_id=parent_id
   if ~keyword_set(nomesh) then nomesh=0
 
   if nomesh eq 1 then return, {name:mpas_name}
   
-  savfile = '/glade/p/work/ahijevyc/mpas_plots/'+mpas_name+'/'+mpas_name+'_mesh.sav'
+  parent_id_string = ''
+  if keyword_set(parent_id) then parent_id_string = '.' + parent_id
+  
+  savfile = '/glade/p/work/ahijevyc/mpas_plots/'+mpas_name+'/'+mpas_name+parent_id_string+'_mesh.sav'
   if file_test(savfile) ne 1 then begin
     print, "could not find "+savfile
     print, "run make_quickie, found in this file"
@@ -21,7 +24,7 @@ end
 
 pro make_quickie
 
-  mpass = ['GFS']
+  mpass = ['wp']
 ;  mpass = ['mpas_al','mpas_wp']
   ;mpass=['ep','al']
   basedir = '/glade/scratch/ahijevyc/'
@@ -35,7 +38,6 @@ pro make_quickie
         ncdf_varget, ncid, ncdf_varid(ncid, 'lat_0'), lat
         result = ncdf_varinq(ncid, ncdf_varid(ncid,'VGRD_P0_L103_GLL0')); float VGRD_P0_L103_GLL0(lv_HTGL9, lat_0, lon_0)
         if not array_equal(result.dim, [ncdf_dimid(ncid,'lon_0'),ncdf_dimid(ncid,'lat_0'),ncdf_dimid(ncid,'lv_HTGL9')]) then stop
-        landmask = replicate(0, [lon.length, lat.length])
       endif
       if mpas_name eq 'GFS' then begin
         ncid = ncdf_open(basedir+mpas_name+'/2017082000/gfs.t00z.pgrb2.0p25.f000.nc')
@@ -87,7 +89,7 @@ pro make_quickie
       
       cellsOnCell = transpose([[top[*]],[right[*]],[bot[*]],[left[*]]]) + 1 ; cellsOnCell is Fortran 1-based?
     endif else begin
-      initnc_files = file_search(basedir+mpas_name+'/2017080400/init.nc',count=nfiles)
+      initnc_files = file_search(basedir+mpas_name+'/2016092300/init.nc',count=nfiles)
       if nfiles eq 0 then begin
         print, "did not find init.nc file in", basedir+mpas_name
         stop
@@ -99,13 +101,13 @@ pro make_quickie
         if init_info.size ne init_size then stop
       endfor
       i = mpas_read(initnc_files[0])
-      latCell = i.latCell.value
-      lonCell = i.lonCell.value
-      nEdgesOnCell = i.nEdgesOnCell.value
-      areaCell = i.areaCell.value
-      cellsOnCell = i.cellsOnCell.value
-      landmask = i.landmask.value ; landmask needed by mpas_water_budget.pro
-      parent_id = i.parent_id
+      latCell = i["latCell","value"]
+      lonCell = i["lonCell","value"]
+      nEdgesOnCell = i["nEdgesOnCell","value"]
+      areaCell = i["areaCell","value"]
+      cellsOnCell = i["cellsOnCell","value"]
+      landmask = i["landmask","value"] ; landmask needed by mpas_water_budget.pro
+      parent_id = i["parent_id"]
     endelse
     
     savfile = '/glade/p/work/ahijevyc/mpas_plots/'+mpas_name+'/'+mpas_name+'.'+parent_id+'_mesh.sav'
