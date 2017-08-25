@@ -22,7 +22,7 @@ pro print_atcf, atcf, atcf_file_in, best_model_track, debug=debug
     NS = lat ge 0 ? 'N' : 'S'
     EW = lon ge 0 ? 'E' : 'W'
     max_spd10m = round(best_model_track.max_spd10m[itime] * meters_per_second2knots)
-    min_mslp   = round(best_model_track.min_mslp[itime]/100)
+    min_slp   = round(best_model_track.min_slp[itime]/100)
     ; Print NaNs as zeros. Convert km to nm, rounding to the nearest nm.
     NE_spd10m  = finite(best_model_track.NE_spd10m[itime]) ? round(best_model_track.NE_spd10m[itime] * km2nm) : 0
     SE_spd10m  = finite(best_model_track.SE_spd10m[itime]) ? round(best_model_track.SE_spd10m[itime] * km2nm) : 0
@@ -40,7 +40,7 @@ pro print_atcf, atcf, atcf_file_in, best_model_track, debug=debug
     
     atcf_line =STRUPCASE(basin) + ', '+ CY +', '+init_date+', 03, '+model_abbrev+', ' + $
       string(fh[itime], round(10*abs([lat, lon])), format='(i3,", ",i3,"'+NS+', ",i4,"'+EW+', ")') + $
-      string(max_spd10m, min_mslp,  format='(i3,", ",i4,", XX,  34, NEQ")') + $
+      string(max_spd10m, min_slp,  format='(i3,", ",i4,", XX,  34, NEQ")') + $
       string(NE_spd10m,SE_spd10m,SW_spd10m,NW_spd10m,format='(4(", ", i4))') + ', ' + $
       '   0,    0, ' + string(RMW, format='(i3,", ")') + '  0,   0, ' + $
       string(subregion, format='(A3)') + $
