@@ -2,7 +2,7 @@ function vitals_structure, ntimes
   data = replicate(!VALUES.D_NAN, ntimes)
   vitals = {$
      max_spd10m:{field:'speed10',            range:[0,500],   op:'max',  data:data} $
-    ,min_mslp:  {field:'mslp',               range:[0,100],   op:'min',  data:data} $
+    ,min_slp:   {field:'mslp',               range:[0,100],   op:'min',  data:data} $
     ,maxr_s10m: {field:'speed10',            range:[0,500],   op:'maxr', data:data} $
     ,NE_spd10m: {field:'speed10',            range:[0,500],   op:'NE17', data:data} $
     ,SE_spd10m: {field:'speed10',            range:[0,500],   op:'SE17', data:data} $
@@ -57,7 +57,7 @@ function add_vitals, model_tracks, mpas, origmesh=origmesh
       ; How do we deal with that?  With interpol_nan
       vitals.max_spd10m.data = interpol_nan(t.vmax[ig] * !ATMOS.kts2mps, t.julday[ig], model_track.times)
       if total(finite(vitals.max_spd10m.data) eq 0) then stop
-      vitals.min_mslp.data   = interpol_nan(t.mslp[ig]*100.,    t.julday[ig], model_track.times)
+      vitals.min_slp.data   = interpol_nan(t.mslp[ig]*100.,    t.julday[ig], model_track.times)
       vitals.ne_spd10m.data  = interpol_nan(t.rad1[ig] * nm2km, t.julday[ig], model_track.times)
       vitals.se_spd10m.data  = interpol_nan(t.rad2[ig] * nm2km, t.julday[ig], model_track.times)
       vitals.sw_spd10m.data  = interpol_nan(t.rad3[ig] * nm2km, t.julday[ig], model_track.times)
