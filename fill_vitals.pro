@@ -97,8 +97,9 @@ pro fill_vitals, mpas, iCells, init_date, valid_time, vitals, vital_itimes, mode
     ; We have two meshes named 'wp'. One for 2016 and before one for 2017 onward.
     ; We can differentiate them by their parent_id attribute.
     ncdf_attget, ncid, "parent_id", model_file_parent_id, /GLOBAL
+    model_file_parent_id = string(model_file_parent_id) ; convert from char to string
     if strpos(model_file_parent_id, mpas.parent_id) eq -1 then begin
-      print, "looking for mpas parent_id "+mpas.parent_id+" in model file parent_id"
+      print, "looking for mpas mesh parent_id "+mpas.parent_id+" in model file parent_id"
       print, 'mpas parent_id not in '+model_file_parent_id
       stop
     endif
