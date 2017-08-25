@@ -27,9 +27,9 @@ function mpas_read, file, field=field, ncid=ncid
 
   endif else if strmatch(file, '*init.nc') then begin
     ncdf_get, file, ['latCell','lonCell','xCell','yCell','zCell','indexToCellID','nEdgesOnCell',$
-      'areaCell', 'cellsOnCell', 'ter', 'landmask', 'xtime','skintemp','precipw'], t, /struct, gatt=gatt
-    t.latCell.value = t.latCell.value * !RADEG
-    t.lonCell.value = t.lonCell.value * !RADEG
+      'areaCell', 'cellsOnCell', 'ter', 'landmask', 'xtime','skintemp','precipw'], t, gatt=gatt
+    t["latCell","value"] = t["latCell","value"] * !RADEG
+    t["lonCell","value"] = t["lonCell","value"] * !RADEG
 
   endif else if strmatch(file, '*GFS*', /fold) then begin
 
@@ -142,11 +142,11 @@ function mpas_read, file, field=field, ncid=ncid
   if keyword_set(ncid) eq 0 then NCDF_CLOSE, ncid
 
   ; Extract parent_id attribute
-  parent_id = strsplit(gatt.parent_id, string(10b), /extract) ; split at newlines \n or string(10b)
+  parent_id = strsplit(gatt["parent_id"], string(10b), /extract) ; split at newlines \n or string(10b)
   parent_id = parent_id[-1]
-  t = create_struct('parent_id', parent_id, t)
+  t['parent_id'] = parent_id
 
-  if keyword_set(field) then return, t.(where(strmatch(tag_names(t), field, /fold)))
+  if keyword_set(field) then return, t[field]
 
   return, t
 
