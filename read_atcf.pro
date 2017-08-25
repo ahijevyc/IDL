@@ -1,4 +1,4 @@
-function read_atcf, file, header=header, count=count, storms=uniq_storms, GFDL_warmcore_only = GFDL_warmcore_only, $
+function read_atcf, file, storms=uniq_storms, GFDL_warmcore_only = GFDL_warmcore_only, $
   lats=lats, lons=lons, times=times, intensity=intensity, id=id, tech=tech
 
   ; read ATCF files
@@ -67,15 +67,16 @@ function read_atcf, file, header=header, count=count, storms=uniq_storms, GFDL_w
   ; Return !NULL if file doesn't exist
   if not file_test(file) then begin
     print, 'read_atcf: ',file, ' does not exist!'
-    return, !NULL
+    return, dictionary()
   endif
 
   ; Return !NULL if zero-size
   if file_test(file, /zero) then begin
     print, 'read_atcf: ',file, ' is zero size!'
-    return, !NULL
+    return, dictionary()
   endif
 
+  ; Guess the format by reading first line.
   openr, lun, file, /get_lun
   readf, lun, b
   free_lun, lun
@@ -95,7 +96,7 @@ function read_atcf, file, header=header, count=count, storms=uniq_storms, GFDL_w
     stop
   endif
 
-  t = read_ascii(file, template=template, header=header, count=count)
+  t = read_ascii(file, template=template, count=count)
   t = dictionary(t)
 
   if matches_fort64 then begin
@@ -179,6 +180,7 @@ function read_atcf, file, header=header, count=count, storms=uniq_storms, GFDL_w
   lons              = replicate(!VALUES.D_NAN, nstorms, max_time_dim_size)
   times             = replicate(!VALUES.D_NAN, nstorms, max_time_dim_size) ; not just start time. all times for an MCV.
   intensity         = replicate(!VALUES.F_NAN, nstorms, max_time_dim_size)
+  mslp              = replicate(!VALUES.F_NAN, nstorms, max_time_dim_size)
   id                = replicate('',nstorms)
 
   jmcv =0L
@@ -207,14 +209,24 @@ function read_atcf, file, header=header, count=count, storms=uniq_storms, GFDL_w
     if icy eq !NULL then stop
     ; Only fill in lat/lon/times/intensity/id if there is at least one warmcore = 'Y'
     if GFDL_warmcore_only eq 1 && total(t.warmcore[icy] eq 'Y') eq 0 then continue
-    lats[jmcv,0:nt-1] = t.lat[icy]
-    lons[jmcv,0:nt-1] = t.lon[icy]
-    times[jmcv,0:nt-1] = t.julday[icy]
+    lats[jmcv,0:nt-1]      = t.lat[icy]
+    lons[jmcv,0:nt-1]      = t.lon[icy]
+    times[jmcv,0:nt-1]     = t.julday[icy]
     intensity[jmcv,0:nt-1] = t.vmax[icy]; use maximum wind speed [kts] as intensity. !VALUES.F_INFINITY
+    mslp[jmcv,0:nt-1]      = t.mslp[icy]
     id[jmcv]=stormid
     jmcv=jmcv+1
   endfor
 
+  ; Return as dictionary keys, in addition to keyword variables.
+  t.lats = lats
+  t.lons = lons
+  t.times = times
+  t.intensity = intensity
+  t.vmax      = intensity
+  t.mslp = mslp
+  t.id = id
+  
   return, t
 
 end
