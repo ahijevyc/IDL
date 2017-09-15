@@ -4,7 +4,7 @@ pro run_plot_storm, forcenew = force_new
 end
 
 pro plot_storm, adeck_file, bdeck_file=bdeck_file, model=model, ofile=ofile, $
-  title=title, buffer=buffer, force_new=force_new, get_origmesh= get_origmesh
+  title=title, buffer=buffer, force_new=force_new, get_origmesh= get_origmesh, tech=tech, toplot=toplot
   ; Plot TC track and matching model tracks for one storm.
   ; Plot TC intensity and matching model intensities too.
   ; Input
@@ -18,6 +18,8 @@ pro plot_storm, adeck_file, bdeck_file=bdeck_file, model=model, ofile=ofile, $
     print, "b-deck file "+bdeck_file+" does not begin with 'b'. are you sure about it?"
     stop
   endif
+  
+  atmos_const
   ;
   ; Read entire atcf file
   ;  adeck structure will have a 1-D array for each atcf column with lengths equal
@@ -27,7 +29,7 @@ pro plot_storm, adeck_file, bdeck_file=bdeck_file, model=model, ofile=ofile, $
   ; choose GFDL_warmcore_only=0 because a-decks don't generally have a warm core column.
   ; I added a custom column but only after Nov 2016.
   GFDL_warmcore_only = 0
-  adeck = read_atcf(adeck_file, GFDL_warmcore_only=GFDL_warmcore_only) ; adeck atcf in knots and nautical miles
+  adeck = read_atcf(adeck_file, GFDL_warmcore_only=GFDL_warmcore_only, tech=tech) ; adeck atcf in knots and nautical miles
   if adeck.IsEmpty() then return
 
   if ~keyword_set(model) then model = mpas_mesh(adeck.tech[0])
@@ -41,6 +43,7 @@ pro plot_storm, adeck_file, bdeck_file=bdeck_file, model=model, ofile=ofile, $
 
   if ~keyword_set(title) then title = file_dirname(adeck_file)+"!C"+file_basename(adeck_file)
   if ~keyword_set(get_origmesh) then get_origmesh = 0
+  if ~keyword_set(toplot) then toplot = 'vmax'
 
   ii = where(adeck.tech ne model.name, /null)
   if ii ne !null then begin
@@ -75,10 +78,13 @@ pro plot_storm, adeck_file, bdeck_file=bdeck_file, model=model, ofile=ofile, $
   endif
 
   ineg = where(lons lt 0, /null)
-  if ineg ne !NULL and (max(lons) gt 90 or (min(lons) lt -179 and max(lons) lt -90)) then lons[ineg] = lons[ineg] + 360
+  ; 20170913. I think lons come in between -180 and 180.
+  ; if there are longitudes below zero...and we straddle the prime meridian or dateline, add 360 to them.
+  if ineg ne !NULL and (max(lons) gt 90 or (min(lons) lt -180 and max(lons) lt -90)) then lons[ineg] = lons[ineg] + 360
   limit = [min(lats)-2.5, min(lons)-1, max(lats)+1, max(lons)+1]
-  ; for JOAQUIN cut 40° from east and 20° from north
-  ; limit = [limit[0],limit[1],limit[2]-8,limit[3]-40]
+  ; per idl documentation, lonmax-lonmin must be 360 deg or less
+  if limit[3]-limit[1] gt 360 then limit[3] = limit[1]+360
+  
   map = map('Cylindrical', limit=limit, font_size=10, fill_color=[235,235,242], $
     margin=[0.08,0.08,0.2,0.15], title=title, layout=[1,2,1], buffer=buffer)
   grid = map.MAPGRID & grid.thick=1 & grid.color='white'& grid.label_color='black'& grid.LABEL_POSITION = 0
@@ -105,10 +111,10 @@ pro plot_storm, adeck_file, bdeck_file=bdeck_file, model=model, ofile=ofile, $
   crud = {sym_filled:1, transparency:0.3, linestyle:'solid', symbol:"circle", $
     sym_transparency:0.3}
 
-  lineplot = plot(obs.julday, obs.mslp, layout=[1,2,2], ytitle='hPa', $
+  lineplot = plot(obs.julday, obs[toplot], layout=[1,2,2], ytitle='', $ # placeholder for y-axis title (or else is cut off)
     sym_size=0.69, thick=1.5, name=stormname, _extra=crud, xtitle='Date', $
-    title=stormname+" "+tech+" and "+model.name+" tracks intensity", /current, $
-    xrange=[min(adeck.times),max(adeck.times)])
+    title=stormname+" "+tech+" and "+model.name+" tracks "+toplot, /current, $
+    xrange=[min(adeck.times),max(adeck.times)], uvalue=toplot) ; experimented with uvalue - not used. 
 
   lineplot.Refresh, /disable
   map.Refresh, /disable
@@ -128,7 +134,7 @@ pro plot_storm, adeck_file, bdeck_file=bdeck_file, model=model, ofile=ofile, $
     min_duration_days = 0
     if n_elements(adeck.id) gt 40 then begin ; ran this block on Ryder's 4-km tracks to filter out short, non-tropical tracks
       track_name = stid ; good for multiple storms
-      min_duration_days = 2
+      min_duration_days = 3
       if ntimes lt min_duration_days * 8 then begin
         print, id + string(format='(i3)',ntimes)+ " times too short, not plotting"
         continue
@@ -138,8 +144,8 @@ pro plot_storm, adeck_file, bdeck_file=bdeck_file, model=model, ofile=ofile, $
         continue
       endif
     endif
-    if max(adeck.vmax[i,ifinite]) lt 25. then begin
-      print, id + " max vmax < 25, not plotting"
+    if max(adeck.vmax[i,ifinite]) lt 34. then begin
+      print, id + " max vmax < 34, not plotting"
       continue
     endif
     model_track = {tracks_file:adeck_file, init_time:init_time, init_date:init_date, $
@@ -155,19 +161,19 @@ pro plot_storm, adeck_file, bdeck_file=bdeck_file, model=model, ofile=ofile, $
     ii = where(finite(atimes) and h eq 0, /null)
     if ii ne !NULL then day_str[ii] = string(atimes[ii], format='(C(CDI0))')
     junk = symbol(model_track.lon, model_track.lat, /data, label_string=day_str,$
-      label_color=contrasting_color(color),label_position='C', label_font_size=2.)
+      label_color=contrasting_color(color),label_position='C', label_font_size=2.1)
 
-    toplot = adeck.mslp[i,ifinite]
+    xdata = (adeck[toplot])[i,ifinite]
     if get_origmesh then begin
       model_track = add_vitals(list(model_track), model, origmesh=get_origmesh)
       str = " from original mesh"
       if strpos(lineplot.title.string, str) eq -1 then lineplot.title.string = lineplot.title.string + str
       model_track = model_track[0]
-      toplot = model_track.max_spd10m*1.94384
-      toplot = model_track.min_slp/100
+      if toplot eq 'vmax' then xdata = model_track.max_spd10m / !ATMOS.KTS2MPS ; m/s to knots
+      if toplot eq 'mslp' then xdata = model_track.min_slp/100
     endif
 
-    junk = plot(atimes, toplot, overplot=lineplot, _extra=crud, $
+    junk = plot(atimes, xdata, overplot=lineplot, _extra=crud, $
       sym_size=sym_size, thick=thick, color=color, name=init_date)
   endforeach
   ; bring observed best track time series to front (other time series called 'junk')
@@ -189,13 +195,16 @@ pro plot_storm, adeck_file, bdeck_file=bdeck_file, model=model, ofile=ofile, $
   endif
 
   if 0 then begin
+    ; for JOAQUIN cut 40° from east and 20° from north
+    ; limit = [limit[0],limit[1],limit[2]-8,limit[3]-40]
+
     t = map.limit
-    t = t + [3, 0, -5, -40]
+    t = [5, 260, 46, 345]
     map.limit = t
     t = lineplot.xrange
-    t = t + [8, -5]
+    t = t + [0, -4]
     lineplot.xrange = t
-    obs_days.label_font_size=2.5
+    obs_days.label_font_size=2.
   endif
 
   symbol_label_explan = text((map.limit)[1], (map.limit)[0], /DATA, $
@@ -205,11 +214,10 @@ pro plot_storm, adeck_file, bdeck_file=bdeck_file, model=model, ofile=ofile, $
   l = legend(target=legend_items,font_size=font_size,vertical_alignment=0.65, shadow=0, $
     horizontal_alignment='right')
   l.position = [0.998,0.75]; doesn't work when called with this as keyword.
-
-
-
+  
   map.Refresh
-  pretty_TC_intensity, lineplot
+  pretty_TC_intensity, lineplot, toplot=toplot
+
 
   junk = timestamp_text(target=lineplot)
   l.window.save, ofile, resolution=210
