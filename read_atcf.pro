@@ -181,6 +181,7 @@ function read_atcf, file, storms=uniq_storms, GFDL_warmcore_only = GFDL_warmcore
   times             = replicate(!VALUES.D_NAN, nstorms, max_time_dim_size) ; not just start time. all times for an MCV.
   intensity         = replicate(!VALUES.F_NAN, nstorms, max_time_dim_size)
   mslp              = replicate(!VALUES.F_NAN, nstorms, max_time_dim_size)
+  rmw              = replicate(!VALUES.F_NAN, nstorms, max_time_dim_size)
   id                = replicate('',nstorms)
 
   jmcv =0L
@@ -214,6 +215,7 @@ function read_atcf, file, storms=uniq_storms, GFDL_warmcore_only = GFDL_warmcore
     times[jmcv,0:nt-1]     = t.julday[icy]
     intensity[jmcv,0:nt-1] = t.vmax[icy]; use maximum wind speed [kts] as intensity. !VALUES.F_INFINITY
     mslp[jmcv,0:nt-1]      = t.mslp[icy]
+    rmw[jmcv,0:nt-1]      = t.mrd[icy]
     id[jmcv]=stormid
     jmcv=jmcv+1
   endfor
@@ -225,6 +227,7 @@ function read_atcf, file, storms=uniq_storms, GFDL_warmcore_only = GFDL_warmcore
   t.intensity = intensity
   t.vmax      = intensity
   t.mslp = mslp
+  t.rmw = rmw
   t.id = id
   
   return, t
