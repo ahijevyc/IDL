@@ -6,7 +6,7 @@ end
 
 
 pro fill_vitals, mpas, iCells, init_date, valid_time, vitals, vital_itimes, model_file=model_file, $
-  model_basedir=model_basedir
+  model_basedir=model_basedir, ignore_parent_id=ignore_parent_id
   ; INPUT
   ; mpas - Output from mpas_mesh('mpas_xx') function. Information about model grid.
   ;   A structure with tags like .latCell, .areaCell, etc.
@@ -29,8 +29,14 @@ pro fill_vitals, mpas, iCells, init_date, valid_time, vitals, vital_itimes, mode
   ; OUTPUT KEYWORD
   ; model_file - path and filename of the model forecast
   ;
+  ; KEYWORDS
+  ; ignore_parent_id - The default is to stop if the parent_id of the diagnostics file doesn't contain
+  ; the parent_id of the init.nc from which the lats and lons were taken. If this is set, don't stop.
+  
 
 
+  if n_elements(ignore_parent_id) eq 0 then ignore_parent_id=0
+  
   ; My vitals units are km and m/s, while ATCF uses nm and kt. This is crucial when writing ATCF format.
   nfields = n_tags(vitals)
   if n_elements(vital_itimes) eq 0 then vital_itimes = lindgen(n_elements(vitals.(0).data))
@@ -101,7 +107,7 @@ pro fill_vitals, mpas, iCells, init_date, valid_time, vitals, vital_itimes, mode
     if strpos(model_file_parent_id, mpas.parent_id) eq -1 then begin
       print, "looking for mpas mesh parent_id "+mpas.parent_id+" in model file parent_id"
       print, 'mpas parent_id not in '+model_file_parent_id
-      stop
+      if not ignore_parent_id then stop
     endif
   endif
 
@@ -135,8 +141,9 @@ pro fill_vitals, mpas, iCells, init_date, valid_time, vitals, vital_itimes, mode
             junk = max(data[ineighbors.iCell],imax)
             vitals.(ifield).data[vital_itimes[iCell]] = ineighbors[imax].range
           end
-          (strmid(op,2,2) eq '17') :  begin ; 34 knots
-            ifast = where(data[ineighbors.iCell] ge 17.4911, /null)
+          (strmid(op,2,2) eq '34' or strmid(op,2,2) eq '50' or strmid(op,2,2) eq '64') :  begin 
+            mps = float(strmid(op,2,2)) * !ATMOS.kts2mps
+            ifast = where(data[ineighbors.iCell] ge mps, /null)
             if n_elements(ifast) gt 0 then begin
               ineighbors = ineighbors[ifast]
               case strmid(op,0,2) of
