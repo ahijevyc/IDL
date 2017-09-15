@@ -4,10 +4,18 @@ function vitals_structure, ntimes
      max_spd10m:{field:'speed10',            range:[0,500],   op:'max',  data:data} $
     ,min_slp:   {field:'mslp',               range:[0,100],   op:'min',  data:data} $
     ,maxr_s10m: {field:'speed10',            range:[0,500],   op:'maxr', data:data} $
-    ,NE_spd10m: {field:'speed10',            range:[0,500],   op:'NE17', data:data} $
-    ,SE_spd10m: {field:'speed10',            range:[0,500],   op:'SE17', data:data} $
-    ,SW_spd10m: {field:'speed10',            range:[0,500],   op:'SW17', data:data} $
-    ,NW_spd10m: {field:'speed10',            range:[0,500],   op:'NW17', data:data} $
+    ,NE34:      {field:'speed10',            range:[0,500],   op:'NE34', data:data} $
+    ,SE34:      {field:'speed10',            range:[0,500],   op:'SE34', data:data} $
+    ,SW34:      {field:'speed10',            range:[0,500],   op:'SW34', data:data} $
+    ,NW34:      {field:'speed10',            range:[0,500],   op:'NW34', data:data} $
+;    ,NE50:      {field:'speed10',            range:[0,500],   op:'NE50', data:data} $
+;    ,SE50:      {field:'speed10',            range:[0,500],   op:'SE50', data:data} $
+;    ,SW50:      {field:'speed10',            range:[0,500],   op:'SW50', data:data} $
+;    ,NW50:      {field:'speed10',            range:[0,500],   op:'NW50', data:data} $
+;    ,NE64:      {field:'speed10',            range:[0,500],   op:'NE64', data:data} $
+;    ,SE64:      {field:'speed10',            range:[0,500],   op:'SE64', data:data} $
+;    ,SW64:      {field:'speed10',            range:[0,500],   op:'SW64', data:data} $
+;    ,NW64:      {field:'speed10',            range:[0,500],   op:'NW64', data:data} $
 ;    ,t850_core: {field:'temperature_850hPa', range:[0,100],   op:'mean', data:data} $
 ;    ,t500_core: {field:'temperature_500hPa', range:[0,100],   op:'mean', data:data} $
 ;    ,t200_core: {field:'temperature_200hPa', range:[0,100],   op:'mean', data:data} $
@@ -30,11 +38,6 @@ function add_vitals, model_tracks, mpas, origmesh=origmesh
   ; Lists come from get_all_model_vitals or find_matching_model_track
   if n_elements(origmesh) eq 0 then origmesh = 1
   atmos_const
-  ; tear apart rows of data in each track
-  ; Put them into equal-sized 1-D vectors of times, lats, and lons
-  times = !NULL
-  lats  = !NULL
-  lons  = !NULL
   init_date = model_tracks[0].init_date
   ntracks = model_tracks.count()
   
@@ -43,7 +46,8 @@ function add_vitals, model_tracks, mpas, origmesh=origmesh
   ; fixed this by converting output of find_matching_model_track to a list() 20140718
   
   ; First take care of origmesh=False. Don't get original mesh values for this IF block
-  if origmesh eq 0 && strmatch(model_tracks[0].tracks_file, '*fort.[5-9]*') then begin
+  if origmesh eq 0 then begin
+    if not strmatch(model_tracks[0].tracks_file, '*fort.[5-9]*') then stop ; was in if-test above. don't know why.
     foreach model_track, model_tracks, itrack do begin
       t = read_atcf(model_track.tracks_file) ; read_atcf returns 'vmax' tag in knots and mslp in hPa
       nm2km = 1.852
@@ -57,11 +61,11 @@ function add_vitals, model_tracks, mpas, origmesh=origmesh
       ; How do we deal with that?  With interpol_nan
       vitals.max_spd10m.data = interpol_nan(t.vmax[ig] * !ATMOS.kts2mps, t.julday[ig], model_track.times)
       if total(finite(vitals.max_spd10m.data) eq 0) then stop
-      vitals.min_slp.data   = interpol_nan(t.mslp[ig]*100.,    t.julday[ig], model_track.times)
-      vitals.ne_spd10m.data  = interpol_nan(t.rad1[ig] * nm2km, t.julday[ig], model_track.times)
-      vitals.se_spd10m.data  = interpol_nan(t.rad2[ig] * nm2km, t.julday[ig], model_track.times)
-      vitals.sw_spd10m.data  = interpol_nan(t.rad3[ig] * nm2km, t.julday[ig], model_track.times)
-      vitals.nw_spd10m.data  = interpol_nan(t.rad4[ig] * nm2km, t.julday[ig], model_track.times)
+      vitals.min_slp.data    = interpol_nan(t.mslp[ig] * 100.,  t.julday[ig], model_track.times)
+      vitals.NE34.data       = interpol_nan(t.rad1[ig] * nm2km, t.julday[ig], model_track.times)
+      vitals.SE34.data       = interpol_nan(t.rad2[ig] * nm2km, t.julday[ig], model_track.times)
+      vitals.SW34.data       = interpol_nan(t.rad3[ig] * nm2km, t.julday[ig], model_track.times)
+      vitals.NW34.data       = interpol_nan(t.rad4[ig] * nm2km, t.julday[ig], model_track.times)
       vitals.maxr_s10m.data  = interpol_nan( t.mrd[ig] * nm2km, t.julday[ig], model_track.times)
       ; return vmax in m/s and radius of max wind in km
       for itag=0,n_tags(vitals)-1 do begin
@@ -74,6 +78,13 @@ function add_vitals, model_tracks, mpas, origmesh=origmesh
   endif ; origmesh=False
   
   ; Get vitals from raw mesh (as opposed to fort.66 GFDL tracker output) - MPAS and even GFS!
+  
+  ; tear apart rows of data in each track
+  ; Put them into equal-sized 1-D vectors of times, lats, and lons
+  times = !NULL
+  lats  = !NULL
+  lons  = !NULL
+
   for itrack=0,ntracks-1 do begin
     track = model_tracks[itrack]
     times = [times, track.times]
@@ -97,7 +108,7 @@ function add_vitals, model_tracks, mpas, origmesh=origmesh
     ; vital_itimes will be used to locate the time indicies that match this vitals time.
     vital_itimes = where(times eq vitals_times[itime], /null)
     fill_vitals, mpas, mcv_nearestCells[vital_itimes], init_date, vitals_times[itime], vitals, vital_itimes, $
-      model_file=model_file ;  , model_basedir='/glade/scratch/ahijevyc/al/2016092900/'
+      model_file=model_file ;, model_basedir='/glade/scratch/mpasrt/uni/'+track.init_date+'/test/', /ignore_parent_id
     model_files.add, model_file
   endfor
   
