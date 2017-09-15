@@ -1,4 +1,5 @@
 pro print_atcf, atcf, atcf_file_in, best_model_track, debug=debug
+  atmos_const
   if ~keyword_set(debug) then debug=0
   atcf_file = file_basename(atcf_file_in)
   ; un-"list" matching_model_track.
@@ -9,7 +10,7 @@ pro print_atcf, atcf, atcf_file_in, best_model_track, debug=debug
   CY = strmid(atcf_file,3,2)
   fh = (best_model_track.times - best_model_track.init_time)*24
   init_date = best_model_track.init_date
-  meters_per_second2knots = 1.94384
+  meters_per_second2knots = 1/!ATMOS.KTS2MPS
   km2nm = 0.539957
   mpas = mpas_mesh(best_model_track.model_name)
   
@@ -24,11 +25,11 @@ pro print_atcf, atcf, atcf_file_in, best_model_track, debug=debug
     max_spd10m = round(best_model_track.max_spd10m[itime] * meters_per_second2knots)
     min_slp   = round(best_model_track.min_slp[itime]/100)
     ; Print NaNs as zeros. Convert km to nm, rounding to the nearest nm.
-    NE_spd10m  = finite(best_model_track.NE_spd10m[itime]) ? round(best_model_track.NE_spd10m[itime] * km2nm) : 0
-    SE_spd10m  = finite(best_model_track.SE_spd10m[itime]) ? round(best_model_track.SE_spd10m[itime] * km2nm) : 0
-    SW_spd10m  = finite(best_model_track.SW_spd10m[itime]) ? round(best_model_track.SW_spd10m[itime] * km2nm) : 0
-    NW_spd10m  = finite(best_model_track.NW_spd10m[itime]) ? round(best_model_track.NW_spd10m[itime] * km2nm) : 0
-    RMW        = round(best_model_track.maxr_s10m[itime] * km2nm)
+    NE34      = finite(best_model_track.NE34[itime]) ? round(best_model_track.NE34[itime] * km2nm) : 0
+    SE34      = finite(best_model_track.SE34[itime]) ? round(best_model_track.SE34[itime] * km2nm) : 0
+    SW34      = finite(best_model_track.SW34[itime]) ? round(best_model_track.SW34[itime] * km2nm) : 0
+    NW34      = finite(best_model_track.NW34[itime]) ? round(best_model_track.NW34[itime] * km2nm) : 0
+    RMW       =  round(best_model_track.maxr_s10m[itime] * km2nm)
 
     userdefined='gfdl_warmcore_only ddZ rain'
     dT850 = 0 & dT500 = 0 & dT200 = 0 & ddZ850200 = 0 & rainc = 0 & rainnc = 0
@@ -41,10 +42,9 @@ pro print_atcf, atcf, atcf_file_in, best_model_track, debug=debug
     atcf_line =STRUPCASE(basin) + ', '+ CY +', '+init_date+', 03, '+model_abbrev+', ' + $
       string(fh[itime], round(10*abs([lat, lon])), format='(i3,", ",i3,"'+NS+', ",i4,"'+EW+', ")') + $
       string(max_spd10m, min_slp,  format='(i3,", ",i4,", XX,  34, NEQ")') + $
-      string(NE_spd10m,SE_spd10m,SW_spd10m,NW_spd10m,format='(4(", ", i4))') + ', ' + $
+      string(NE34, SE34, SW34, NW34,format='(4(", ", i4))') + ', ' + $
       '   0,    0, ' + string(RMW, format='(i3,", ")') + '  0,   0, ' + $
-      string(subregion, format='(A3)') + $
-      ',   0, DAA, ' + $
+      string(subregion, format='(A3)') + ',   0, DAA, ' + $
       string(dir, speed, stormname, format='(I3,", ",I3,", ",A10,", ")') + $
       depth + ',   , NEQ,    0,    0,    0,    0, ' + $
       string(userdefined, best_model_track.GFDL_warmcore_only, dT500, dT200, $
