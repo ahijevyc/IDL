@@ -53,21 +53,24 @@ function add_vitals, model_tracks, mpas, origmesh=origmesh
       nm2km = 1.852
       ig = !NULL ; find all matching ids in the fort.66 file so we can grab the vmax and mslp
       ; added clause for fort.64 files to match their ids (t.init_yyyymmddhh+t.basin+t.cy)
+      ; read_atcf returns t.mslp and t.vmax as 2d arrays
       for iid=0,n_elements(model_track.id)-1 do ig = [ig, where(t.cy+t.stormname eq model_track.id[iid] $
                                                or t.init_yyyymmddhh+t.basin+t.cy eq model_track.id[iid], /null)]
       vitals = vitals_structure(n_elements(model_track.times))
       
       ; but there may be times in the track that were interpolated with join_model_tracks.pro.
       ; How do we deal with that?  With interpol_nan
+      ; return vmax in m/s
       vitals.max_spd10m.data = interpol_nan(t.vmax[ig] * !ATMOS.kts2mps, t.julday[ig], model_track.times)
-      if total(finite(vitals.max_spd10m.data) eq 0) then stop
+      if total(finite(vitals.max_spd10m.data)) eq 0 then stop
+      ; return min_slp in Pascals
       vitals.min_slp.data    = interpol_nan(t.mslp[ig] * 100.,  t.julday[ig], model_track.times)
+      ; return max radii of wind threshold and radius of max wind in km
       vitals.NE34.data       = interpol_nan(t.rad1[ig] * nm2km, t.julday[ig], model_track.times)
       vitals.SE34.data       = interpol_nan(t.rad2[ig] * nm2km, t.julday[ig], model_track.times)
       vitals.SW34.data       = interpol_nan(t.rad3[ig] * nm2km, t.julday[ig], model_track.times)
       vitals.NW34.data       = interpol_nan(t.rad4[ig] * nm2km, t.julday[ig], model_track.times)
       vitals.maxr_s10m.data  = interpol_nan( t.mrd[ig] * nm2km, t.julday[ig], model_track.times)
-      ; return vmax in m/s and radius of max wind in km
       for itag=0,n_tags(vitals)-1 do begin
         field = (tag_names(vitals))[itag]
         model_tracks[itrack] = create_struct(field, vitals.(itag).data, model_tracks[itrack])
