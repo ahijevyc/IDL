@@ -225,9 +225,10 @@ function read_atcf, file, storms=uniq_storms, GFDL_warmcore_only = GFDL_warmcore
   t.lons = lons
   t.times = times
   t.intensity = intensity
-  t.vmax      = intensity
-  t.mslp = mslp
-  t.rmw = rmw
+  ; avoid confusion with 1d array t.vmax taken from read_ascii()
+  t.vmax2d      = intensity
+  t.mslp2d = mslp
+  t.rmw2d = rmw
   t.id = id
   
   return, t
