@@ -1,6 +1,6 @@
 pro run_plot_storm, forcenew = force_new
-  files = file_search("/glade/p/work/ahijevyc/tracking_gfdl/adeck/*/*/a????201*[ym]", count=nfiles)
-  for ifile=0,nfiles-1 do plot_storm, files[ifile], ofile=files[ifile]+'.png', /buffer, force_new=force_new
+  files = file_search("/glade/p/work/ahijevyc/tracking_gfdl/adeck/uni/tcgen/a????2017*[ym]", count=nfiles)
+  for ifile=0,nfiles-1 do plot_storm, files[ifile], ofile=files[ifile]+'.png', /buffer, force_new=force_new, model=mpas_mesh('uni'); , parent_id='1j3a4tgr4v')
 end
 
 pro plot_storm, adeck_file, bdeck_file=bdeck_file, model=model, ofile=ofile, $
@@ -51,8 +51,8 @@ pro plot_storm, adeck_file, bdeck_file=bdeck_file, model=model, ofile=ofile, $
     print, 'adeck tech = ' + adeck.tech[0] +', model.name=' + model.name
   endif
 
-  lons = adeck.lons[*] ; needed to avoid wrapping lines when straddling map limits
-  lats = adeck.lats[*]
+  lons = adeck.lon ; needed to avoid wrapping lines when straddling map limits
+  lats = adeck.lat
   ; if BDECK, use 'BEST', otherwise use 'CARQ', unless it's w. pacific--then use 'WRNG'
   if strmid(file_basename(bdeck_file),0,1) eq 'b' then tech = 'BEST' else if strpos(file_basename(bdeck_file), 'wp') ne -1 then tech = 'WRNG' else tech = 'CARQ'
   obs = read_atcf(bdeck_file, GFDL_warmcore_only=0, tech=tech) ; no warm core column in b-deck best track obs.
@@ -90,6 +90,7 @@ pro plot_storm, adeck_file, bdeck_file=bdeck_file, model=model, ofile=ofile, $
   grid = map.MAPGRID & grid.thick=1 & grid.color='white'& grid.label_color='black'& grid.LABEL_POSITION = 0
   grid.Order, /send_to_back
   legend_items = list()
+  day_of_month_sym = list()
   track_colors = list('red','blue','green', 'gold', 'light sea green', 'cyan', 'salmon', $
     'pale green', 'silver','yellow','medium orchid','purple','orange','brown','indigo',$
     'wheat','lime','crimson')
@@ -124,6 +125,8 @@ pro plot_storm, adeck_file, bdeck_file=bdeck_file, model=model, ofile=ofile, $
     init_date = strmid(id,i201,10)
     init_time = julday(strmid(init_date,4,2), strmid(init_date,6,2), strmid(init_date,0,4), strmid(init_date,8,2), 0 , 0)
     stid = strmid(id,0,i201)
+    ; if stid ne '11L' then continue
+
     itrack_color = legend_items.count() mod track_colors.count()
     track_name = init_date
     color = track_colors[itrack_color]
@@ -139,12 +142,13 @@ pro plot_storm, adeck_file, bdeck_file=bdeck_file, model=model, ofile=ofile, $
         print, id + string(format='(i3)',ntimes)+ " times too short, not plotting"
         continue
       endif
-      if min(abs(adeck.lat[i,ifinite])) gt 33. then begin
+      ; use adeck.lats, not adeck.lat. lats is 2d lat is 1d. Is there a better naming convention?
+      if min(abs(adeck.lats[i,ifinite])) gt 33. then begin
         print, id + " poleward of 33, not plotting"
         continue
       endif
     endif
-    if max(adeck.vmax[i,ifinite]) lt 34. then begin
+    if max(adeck.vmax2d[i,ifinite]) lt 34. then begin
       print, id + " max vmax < 34, not plotting"
       continue
     endif
@@ -160,10 +164,10 @@ pro plot_storm, adeck_file, bdeck_file=bdeck_file, model=model, ofile=ofile, $
     day_str = replicate('', n_elements(atimes))
     ii = where(finite(atimes) and h eq 0, /null)
     if ii ne !NULL then day_str[ii] = string(atimes[ii], format='(C(CDI0))')
-    junk = symbol(model_track.lon, model_track.lat, /data, label_string=day_str,$
-      label_color=contrasting_color(color),label_position='C', label_font_size=2.1)
+    day_of_month_sym.add, symbol(model_track.lon, model_track.lat, /data, label_string=day_str,$
+      label_color=contrasting_color(color),label_position='C', label_font_size=2)
 
-    xdata = (adeck[toplot])[i,ifinite]
+    xdata = (adeck[toplot+'2d'])[i,ifinite]
     if get_origmesh then begin
       model_track = add_vitals(list(model_track), model, origmesh=get_origmesh)
       str = " from original mesh"
@@ -199,12 +203,13 @@ pro plot_storm, adeck_file, bdeck_file=bdeck_file, model=model, ofile=ofile, $
     ; limit = [limit[0],limit[1],limit[2]-8,limit[3]-40]
 
     t = map.limit
-    t = [5, 260, 46, 345]
+    t = [20, 270, 40, 290]
     map.limit = t
     t = lineplot.xrange
     t = t + [0, -4]
     lineplot.xrange = t
-    obs_days.label_font_size=2.
+    obs_days.label_font_size=0.55
+    foreach trk, day_of_month_sym do trk.label_font_size=0.35
   endif
 
   symbol_label_explan = text((map.limit)[1], (map.limit)[0], /DATA, $
