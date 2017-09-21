@@ -11,7 +11,7 @@ pro run_find_matching_model_track, debug=debug, force_new=force_new, model=model
   ; not be overwritten.
   if ~keyword_set(force_new) then force_new=0
   if ~keyword_set(basin) then basin = '*'
-  if ~keyword_set(year) then year = '2016'
+  if ~keyword_set(year) then year = '2017'
   if n_elements(trackertype) eq 0 then trackertype='tcgen'
   if n_elements(GFDL_warmcore_only) eq 0 then GFDL_warmcore_only = 1 ; Made default 1 Nov 21, 2016. It was 0 by default in read_atcf.pro prior to that.
 
@@ -22,6 +22,7 @@ pro run_find_matching_model_track, debug=debug, force_new=force_new, model=model
     if year eq '2014' then models = ['mpas', 'mpas_ep', 'GFS']
     if year eq '2015' then models = ['ep', 'wp', 'al', 'GFS']
     if year eq '2016' then models = ['GFS', 'wp']; , 'al', 'ep']
+    if year eq '2017' then models = ['wp','GFS', 'uni']
   endif else models=[model]
 
   ; Loop through each model and loop through each best track BDECK.
@@ -70,9 +71,9 @@ pro find_matching_model_track, bdeck_file, model=model, force_new=force_new, deb
   if n_elements(trackertype) eq 0 then trackertype = 'tcgen'
   min_duration_days = 1.d  ; minimum duration of model model_track to consider (unless observation is on boundary of model time window)
   if ~keyword_set(force_new) then force_new = 0 ; force_new=1 forces atcf file and vitals save file to be remade.
-  if n_elements(bdeck_file) eq 0 then bdeck_file = '/glade/p/work/ahijevyc/atcf/bal092017.dat'
+  if n_elements(bdeck_file) eq 0 then bdeck_file = '/glade/p/work/ahijevyc/atcf/bal152017.dat'
   parent_id = '' ; '2pm8jrq5ej';  '7s8dc9hui8'
-  if ~keyword_set(model) then model = mpas_mesh('uni',parent_id=parent_id) else if isa(model,/scalar) then model=mpas_mesh(model)
+  if ~keyword_set(model) then model = mpas_mesh('wp',parent_id=parent_id) else if isa(model,/scalar) then model=mpas_mesh(model)
   total_model_days = strmatch(model.name, 'GFS*') ? 8d : 10d
   if (model.name eq 'mpas15_3') then total_model_days = 3d
   ; If set, GFDL_warmcore_only will make sure at least one time is warm core in the model track
