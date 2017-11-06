@@ -4,7 +4,8 @@ pro run_find_matching_model_track, debug=debug, force_new=force_new, model=model
   ; done globally by setting basin to '*'.
   ; BDECK files are best tracks for each tropical storm. I keep them in /glade/p/work/ahijevyc/atcf/b*.dat
   ; An ADECK file contains the model tracks that match a particular BDECK system. They can be lumped together all in the same file
-  ; or done separately for each model.  This program does it separately for each model and outputs them to /glade/p/work/ahijevyc/tracking_<tracker>/<modelname>/.
+  ; or done separately for each model.  This program does it separately for each model and outputs them to 
+  ; /glade/p/work/ahijevyc/tracking_<tracker>/<modelname>/(tcgen|tracker)/.
   ; This program used to be included in the IDL file get_vitals.pro.
   if ~keyword_set(debug) then debug=0
   ; If force_new=1, then any existing output files will be overwritten. If force_new=0 then the output file will
@@ -71,9 +72,9 @@ pro find_matching_model_track, bdeck_file, model=model, force_new=force_new, deb
   if n_elements(trackertype) eq 0 then trackertype = 'tcgen'
   min_duration_days = 1.d  ; minimum duration of model model_track to consider (unless observation is on boundary of model time window)
   if ~keyword_set(force_new) then force_new = 0 ; force_new=1 forces atcf file and vitals save file to be remade.
-  if n_elements(bdeck_file) eq 0 then bdeck_file = '/glade/p/work/ahijevyc/atcf/bal152017.dat'
-  parent_id = '' ; '2pm8jrq5ej';  '7s8dc9hui8'
-  if ~keyword_set(model) then model = mpas_mesh('wp',parent_id=parent_id) else if isa(model,/scalar) then model=mpas_mesh(model)
+  if n_elements(bdeck_file) eq 0 then bdeck_file = '/glade/p/work/ahijevyc/atcf/bwp202017.dat'
+  parent_id = '8gyjo70yql' ; '2pm8jrq5ej';  '7s8dc9hui8'
+  if ~keyword_set(model) then model = mpas_mesh('GFS') else if isa(model,/scalar) then model=mpas_mesh(model)
   total_model_days = strmatch(model.name, 'GFS*') ? 8d : 10d
   if (model.name eq 'mpas15_3') then total_model_days = 3d
   ; If set, GFDL_warmcore_only will make sure at least one time is warm core in the model track
@@ -85,7 +86,7 @@ pro find_matching_model_track, bdeck_file, model=model, force_new=force_new, deb
   if n_elements(GFDL_warmcore_only) eq 0 then GFDL_warmcore_only = 1
   
   ; fort.64 or fort.66 file must be in possible_fort66_dirs/yyyymmdd00/latlon_dxdetails/gfdl_tracker/tracker_type/.
-  possible_fort66_dirs = ['/glade/scratch/ahijevyc/','/glade/scratch/mpasrt/','/glade/p/nmmm0024/'] + model.name
+  possible_fort66_dirs = ['/glade/scratch/ahijevyc/','/glade/scratch/mpasrt/'] + model.name
   
   tracker = 'gfdl'
   smooth_radius_str = strmatch(model.name, 'GFS*') ? '' : '_025km'
@@ -104,7 +105,7 @@ pro find_matching_model_track, bdeck_file, model=model, force_new=force_new, deb
   storm_id = strmid(file_basename(bdeck_file),1,8)
   ; if BDECK, use 'BEST', otherwise use 'CARQ', unless it's w. pacific--then use 'WRNG'
   if strmid(file_basename(bdeck_file),0,1) eq 'b' then tech = 'BEST' else if strpos(file_basename(bdeck_file), 'wp') ne -1 then tech = 'WRNG' else tech = 'CARQ'
-  obs = read_atcf(bdeck_file, GFDL_warmcore_only=0, tech=tech) ; no warm core column in b-deck best track obs.
+  obs = read_atcf(bdeck_file, GFDL_warmcore_only = 0, tech=tech) ; no warm core column in b-deck best track obs.
   max_vmax=max(obs.vmax) ; storm name taken from the time with greatest vmax.
   ; there can be multiple times with maximum wind. use the latest one. This helps al082014 (HANNA)
   ; it is only INVEST for the first time it reaches max wind speed but becomes HANNA later.
@@ -145,7 +146,9 @@ pro find_matching_model_track, bdeck_file, model=model, force_new=force_new, deb
   TS_first_time = i_TS_strength ne !NULL ? obs.julday[min(i_TS_strength)] : !VALUES.D_INFINITY
 
   ; Find the model tracks files for overlapping model runs for this particular model type and smoothing radius.
-  search_str = possible_fort66_dirs +'/'+year+'[01][0-9][0-3][0-9][012][0-9]'+(strmatch(model.name,'GFS*')?'':'/latlon'+dxdetails)+$
+  search_str = possible_fort66_dirs +'/'+year+'[01][0-9][0-3][0-9][012][0-9]'+$
+     ; '/ecic'+$ ; Temporary kludge - also alter model_basedirs in add_vitals.pro
+    (strmatch(model.name,'GFS*')?'':'/latlon'+dxdetails)+$
     '/gfdl_tracker/'+trackertype+'/fort.' + (strmatch(trackertype,'tcgen*')? '66':'64')
   model_tracks_files = file_search(search_str, count=nmodel_tracks_files)
   if nmodel_tracks_files eq 0 then begin
