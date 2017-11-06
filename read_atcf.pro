@@ -98,6 +98,14 @@ function read_atcf, file, storms=uniq_storms, GFDL_warmcore_only = GFDL_warmcore
 
   t = read_ascii(file, template=template, count=count)
   t = dictionary(t)
+  
+  
+  if GFDL_warmcore_only eq 1 && total(t.warmcore eq 'Y') eq 0 then begin
+    print, "requested warmcore only, but no warm core. Suspicious. Stopping"
+    print, file
+    print, "did you run this on tracker output with no warm core fields to try? like hwt2017?"
+    ;stop
+  endif
 
   if matches_fort64 then begin
     storm_spd_ms = replicate(!VALUES.F_NAN, count)
