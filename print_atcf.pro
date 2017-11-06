@@ -8,7 +8,8 @@ pro print_atcf, atcf, atcf_file_in, best_model_track, debug=debug
   ; basin equals characters 2-3 of atcf filename
   basin = strmid(atcf_file,1,2)
   CY = strmid(atcf_file,3,2)
-  fh = (best_model_track.times - best_model_track.init_time)*24
+  ; round forecast hour fh or else 0.99999 will be printed as 0.
+  fh = round((best_model_track.times - best_model_track.init_time)*24)
   init_date = best_model_track.init_date
   meters_per_second2knots = 1/!ATMOS.KTS2MPS
   km2nm = 0.539957
@@ -25,10 +26,17 @@ pro print_atcf, atcf, atcf_file_in, best_model_track, debug=debug
     max_spd10m = round(best_model_track.max_spd10m[itime] * meters_per_second2knots)
     min_slp   = round(best_model_track.min_slp[itime]/100)
     ; Print NaNs as zeros. Convert km to nm, rounding to the nearest nm.
-    NE34      = finite(best_model_track.NE34[itime]) ? round(best_model_track.NE34[itime] * km2nm) : 0
-    SE34      = finite(best_model_track.SE34[itime]) ? round(best_model_track.SE34[itime] * km2nm) : 0
-    SW34      = finite(best_model_track.SW34[itime]) ? round(best_model_track.SW34[itime] * km2nm) : 0
-    NW34      = finite(best_model_track.NW34[itime]) ? round(best_model_track.NW34[itime] * km2nm) : 0
+    
+    NE34      = 0
+    SE34      = 0
+    SW34      = 0
+    NW34      = 0
+    if total(strmatch(tag_names(best_model_track),'NE34')) then begin
+      if finite(best_model_track.NE34[itime]) then NE34 = round(best_model_track.NE34[itime] * km2nm)
+      if finite(best_model_track.SE34[itime]) then SE34 = round(best_model_track.SE34[itime] * km2nm)
+      if finite(best_model_track.SW34[itime]) then SW34 = round(best_model_track.SW34[itime] * km2nm)
+      if finite(best_model_track.NW34[itime]) then NW34 = round(best_model_track.NW34[itime] * km2nm)
+    endif
     RMW       =  round(best_model_track.maxr_s10m[itime] * km2nm)
 
     userdefined='gfdl_warmcore_only ddZ rain'
