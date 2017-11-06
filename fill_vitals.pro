@@ -6,7 +6,7 @@ end
 
 
 pro fill_vitals, mpas, iCells, init_date, valid_time, vitals, vital_itimes, model_file=model_file, $
-  model_basedir=model_basedir, ignore_parent_id=ignore_parent_id
+  model_basedirs, ignore_parent_id=ignore_parent_id
   ; INPUT
   ; mpas - Output from mpas_mesh('mpas_xx') function. Information about model grid.
   ;   A structure with tags like .latCell, .areaCell, etc.
@@ -23,8 +23,7 @@ pro fill_vitals, mpas, iCells, init_date, valid_time, vitals, vital_itimes, mode
   ; vital_itimes - data array elements to which iCells refer to. [optional]. Needed when processing multiple tracks with common times.
   ; This routine fills in data[vital_itimes]--one by one, in the case of range>0 or all at once for nearest neighbor.
   ;
-  ; model_basedir (optional)  - where to find model data from which to pull raw mesh vitals.
-  ;     if not provided, or no files are found there, try to find it.
+  ; model_basedirs  - ordered list of directories to search for model forecasts. Use the first one that exists.
   ;
   ; OUTPUT KEYWORD
   ; model_file - path and filename of the model forecast
@@ -32,11 +31,11 @@ pro fill_vitals, mpas, iCells, init_date, valid_time, vitals, vital_itimes, mode
   ; KEYWORDS
   ; ignore_parent_id - The default is to stop if the parent_id of the diagnostics file doesn't contain
   ; the parent_id of the init.nc from which the lats and lons were taken. If this is set, don't stop.
-  
+
 
 
   if n_elements(ignore_parent_id) eq 0 then ignore_parent_id=0
-  
+
   ; My vitals units are km and m/s, while ATCF uses nm and kt. This is crucial when writing ATCF format.
   nfields = n_tags(vitals)
   if n_elements(vital_itimes) eq 0 then vital_itimes = lindgen(n_elements(vitals.(0).data))
@@ -45,12 +44,6 @@ pro fill_vitals, mpas, iCells, init_date, valid_time, vitals, vital_itimes, mode
     stop
   endif
 
-  if ~keyword_set(model_basedir) then begin
-    basedir = ['/glade/scratch/ahijevyc/','/glade/scratch/mpasrt/'] ; possible directories of model diagnostic files
-    model_basedir = basedir + mpas.name + "/" + init_date + '/'
-    ; look in /rt subdirectory too for Joaquin 2015
-    model_basedir = [model_basedir+'rt/', model_basedir] ; list /rt first. If multiple directories have diagnostic file, use 1st one.
-  endif
   init_hh = strmid(init_date,8,2)
   diag_datestr = 'diag*.' + string(valid_time, format = '( C(CYI4.4,"-",CMOI2.2,"-",CDI2.2,"_",CHI2.2,".",CMI2.2,".00"))') + '.nc'
 
@@ -63,9 +56,9 @@ pro fill_vitals, mpas, iCells, init_date, valid_time, vitals, vital_itimes, mode
       'gfs.0p25.' + init_date +'.f'+ string(fh, format='(I3.3)') + '.grib2.nc']
   endif
 
-  ; model_basedir is a string array of possible directories.
+  ; model_basedirs is a string array of possible directories.
   ; diag_datestr may also be a string array (in the case of GFS, it is).
-  model_files = file_search(model_basedir + diag_datestr, count=nfiles)
+  model_files = file_search(model_basedirs + diag_datestr, count=nfiles)
 
   if nfiles gt 1 then begin
     print, 'fill_vitals: WARNING. found ',strtrim(nfiles,2),' matching diag* files:'
@@ -74,11 +67,11 @@ pro fill_vitals, mpas, iCells, init_date, valid_time, vitals, vital_itimes, mode
   endif
   ; take 1st array element, even if it is just an empty string.
   ; I think this is designed to get the "rt/" version instead of the "./" version
-  ; because "rt/" is listed first above (when model_basedir is defined)
+  ; because "rt/" is listed first above (when model_basedirs is defined)
   model_file = model_files[0]
 
   if nfiles eq 0 then begin
-    print, "fill_vitals: no " +model_basedir + diag_datestr
+    print, "fill_vitals: no " +model_basedirs + diag_datestr
     model_file = ''
     return
   endif
@@ -101,13 +94,20 @@ pro fill_vitals, mpas, iCells, init_date, valid_time, vitals, vital_itimes, mode
     ; Sanity check
     ; make sure we have the right mpas mesh. with the right latCells, lonCells, etc.
     ; We have two meshes named 'wp'. One for 2016 and before one for 2017 onward.
-    ; We can differentiate them by their parent_id attribute.
+    ; We should differentiate them by their parent_id attribute.
+    ; However, after topo and gwd were updated, around Oct 1, the parent id changed
+    ; without changing the mesh.
     ncdf_attget, ncid, "parent_id", model_file_parent_id, /GLOBAL
     model_file_parent_id = string(model_file_parent_id) ; convert from char to string
-    if strpos(model_file_parent_id, mpas.parent_id) eq -1 then begin
-      print, "looking for mpas mesh parent_id "+mpas.parent_id+" in model file parent_id"
-      print, 'mpas parent_id not in '+model_file_parent_id
-      if not ignore_parent_id then stop
+    matchinit = 0
+    ; are any init.nc parent ids in the model file parent id?
+    foreach parent_id, mpas.parent_id do begin
+      if strpos(model_file_parent_id, parent_id) ne -1 then matchinit = 1
+    endforeach
+    if not matchinit and not ignore_parent_id then begin
+      print, "looking for init.nc mesh parent_id "+mpas.parent_id+" in model file parent_id"
+      print, 'init.nc mesh parent_id not in '+model_file_parent_id
+      stop
     endif
   endif
 
@@ -141,7 +141,7 @@ pro fill_vitals, mpas, iCells, init_date, valid_time, vitals, vital_itimes, mode
             junk = max(data[ineighbors.iCell],imax)
             vitals.(ifield).data[vital_itimes[iCell]] = ineighbors[imax].range
           end
-          (strmid(op,2,2) eq '34' or strmid(op,2,2) eq '50' or strmid(op,2,2) eq '64') :  begin 
+          (strmid(op,2,2) eq '34' or strmid(op,2,2) eq '50' or strmid(op,2,2) eq '64') :  begin
             mps = float(strmid(op,2,2)) * !ATMOS.kts2mps
             ifast = where(data[ineighbors.iCell] ge mps, /null)
             if n_elements(ifast) gt 0 then begin
