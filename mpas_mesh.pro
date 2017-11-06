@@ -27,7 +27,7 @@ pro make_quickie
   mpass = ['wp']
 ;  mpass = ['mpas_al','mpas_wp']
   ;mpass=['ep','al']
-  basedir = '/glade/scratch/ahijevyc/'
+  basedir = '/glade/scratch/mpasrt/'
   for impas = 0, n_elements(mpass)-1 do begin
     mpas_name = mpass[impas]
     
@@ -89,7 +89,8 @@ pro make_quickie
       
       cellsOnCell = transpose([[top[*]],[right[*]],[bot[*]],[left[*]]]) + 1 ; cellsOnCell is Fortran 1-based?
     endif else begin
-      initnc_files = file_search(basedir+mpas_name+'/2016092300/init.nc',count=nfiles)
+      initnc_files = file_search(basedir+mpas_name+'/2017'+['09','10']+'*/init.nc',count=nfiles)
+      
       if nfiles eq 0 then begin
         print, "did not find init.nc file in", basedir+mpas_name
         stop
@@ -98,7 +99,10 @@ pro make_quickie
       init_size = init_info.size
       for ifile=1,nfiles-1 do begin 
         init_info = file_info(initnc_files[ifile])
-        if init_info.size ne init_size then stop
+        if init_info.size ne init_size then begin
+          print, initnc_files[ifile] + " does not match size of " + initnc_files[ifile-1]
+          stop
+        endif
       endfor
       i = mpas_read(initnc_files[0])
       latCell = i["latCell","value"]
@@ -108,9 +112,23 @@ pro make_quickie
       cellsOnCell = i["cellsOnCell","value"]
       landmask = i["landmask","value"] ; landmask needed by mpas_water_budget.pro
       parent_id = i["parent_id"]
+      ; make sure latcell and loncell do not change and areacell/landmask are "close enough" to each other.
+      for iinit=1,nfiles-1 do begin
+        i = mpas_read(initnc_files[iinit])
+        nCells = i["latCell","dim_sizes"]
+        if not array_equal(latCell, i["latCell","value"]) then stop
+        if not array_equal(lonCell, i["lonCell","value"]) then stop
+        if not array_equal(nEdgesOnCell, i["nEdgesOnCell","value"]) then stop
+        if mean(abs(areaCell - i["areaCell","value"])) gt 15174080./ncells then stop
+        if not array_equal(cellsOnCell, i["cellsOnCell","value"]) then stop
+        if mean(abs(landmask - i["landmask","value"])) gt 12./ncells then stop ; landmask needed by mpas_water_budget.pro
+        if total(parent_id eq i["parent_id"]) eq 0 then parent_id = [parent_id, i["parent_id"]]
+      endfor
+
     endelse
     
-    savfile = '/glade/p/work/ahijevyc/mpas_plots/'+mpas_name+'/'+mpas_name+'.'+parent_id+'_mesh.sav'
+    savfile = '/glade/p/work/ahijevyc/mpas_plots/'+mpas_name+'/'+mpas_name+'.'+$
+      strjoin(parent_id,'.')+'_mesh.sav'
     mpas = {name:mpas_name, lonCell:lonCell, latCell:latCell, $
       nEdgesOnCell:nEdgesOnCell, cellsOnCell:cellsOnCell, areaCell:areaCell, $
       landmask:landmask, parent_id:parent_id, savfile:savfile}
