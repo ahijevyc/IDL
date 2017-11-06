@@ -1,10 +1,14 @@
 pro run_plot_storm, forcenew = force_new
   files = file_search("/glade/p/work/ahijevyc/tracking_gfdl/adeck/uni/tcgen/a????2017*[ym]", count=nfiles)
-  for ifile=0,nfiles-1 do plot_storm, files[ifile], ofile=files[ifile]+'.png', /buffer, force_new=force_new, model=mpas_mesh('uni'); , parent_id='1j3a4tgr4v')
+  files = file_search("/glade/u/home/ahijevyc/aal112017.ens_*.dat", count=nfiles)
+  for ifile=0,nfiles-1 do plot_storm, files[ifile], ofile=files[ifile]+'.png', /buffer, force_new=force_new, $
+    output_atcf=file_dirname(files[ifile])+"/"+file_basename(files[ifile],"dat")+"origmeshTrue.dat",$
+    /get_origmesh, model=mpas_mesh('hwt2017'); , parent_id='qn8h9pp21e.66hrbdndmz')
 end
 
 pro plot_storm, adeck_file, bdeck_file=bdeck_file, model=model, ofile=ofile, $
-  title=title, buffer=buffer, force_new=force_new, get_origmesh= get_origmesh, tech=tech, toplot=toplot
+  title=title, buffer=buffer, force_new=force_new, get_origmesh= get_origmesh, $
+  tech=tech, toplot=toplot, output_atcf=output_atcf
   ; Plot TC track and matching model tracks for one storm.
   ; Plot TC intensity and matching model intensities too.
   ; Input
@@ -44,6 +48,8 @@ pro plot_storm, adeck_file, bdeck_file=bdeck_file, model=model, ofile=ofile, $
   if ~keyword_set(title) then title = file_dirname(adeck_file)+"!C"+file_basename(adeck_file)
   if ~keyword_set(get_origmesh) then get_origmesh = 0
   if ~keyword_set(toplot) then toplot = 'vmax'
+  start_new_atcf_output_file = 1
+  close, /all
 
   ii = where(adeck.tech ne model.name, /null)
   if ii ne !null then begin
@@ -138,8 +144,9 @@ pro plot_storm, adeck_file, bdeck_file=bdeck_file, model=model, ofile=ofile, $
     if n_elements(adeck.id) gt 40 then begin ; ran this block on Ryder's 4-km tracks to filter out short, non-tropical tracks
       track_name = stid ; good for multiple storms
       min_duration_days = 3
-      if ntimes lt min_duration_days * 8 then begin
-        print, id + string(format='(i3)',ntimes)+ " times too short, not plotting"
+      tmp_duration = max(adeck.times[i,ifinite]) - min(adeck.times[i,ifinite])
+      if tmp_duration lt min_duration_days then begin
+        print, id + string(format='(i3)',tmp_duration)+ " days too short, not plotting"
         continue
       endif
       ; use adeck.lats, not adeck.lat. lats is 2d lat is 1d. Is there a better naming convention?
@@ -153,7 +160,8 @@ pro plot_storm, adeck_file, bdeck_file=bdeck_file, model=model, ofile=ofile, $
       continue
     endif
     model_track = {tracks_file:adeck_file, init_time:init_time, init_date:init_date, $
-      lon: adeck.lons[i,ifinite], lat: adeck.lats[i,ifinite], times:adeck.times[i,ifinite]}
+      lon: adeck.lons[i,ifinite], lat: adeck.lats[i,ifinite], times:adeck.times[i,ifinite], $
+      model_name: model.name, id:id, gfdl_warmcore_only:gfdl_warmcore_only, stormname:stormname}
 
     legend_items.add, plot(model_track.lon, model_track.lat, /data, _extra=crud, thick=thick, color=color, $
       sym_size=sym_size, name=track_name, overplot=map)
@@ -169,17 +177,28 @@ pro plot_storm, adeck_file, bdeck_file=bdeck_file, model=model, ofile=ofile, $
 
     xdata = (adeck[toplot+'2d'])[i,ifinite]
     if get_origmesh then begin
-      model_track = add_vitals(list(model_track), model, origmesh=get_origmesh)
+      iens = strpos(file_basename(adeck_file), "ens_")
+      if iens eq -1 then stop
+      ens = strmid(file_basename(adeck_file),iens+4,2)
+      ens = string(long(ens),format='(I0)')
+      model_track = add_vitals(list(model_track), model, origmesh='/glade/scratch/ahijevyc/hwt2017/2017090700/ens_'+ens+'/')
       str = " from original mesh"
       if strpos(lineplot.title.string, str) eq -1 then lineplot.title.string = lineplot.title.string + str
       model_track = model_track[0]
       if toplot eq 'vmax' then xdata = model_track.max_spd10m / !ATMOS.KTS2MPS ; m/s to knots
       if toplot eq 'mslp' then xdata = model_track.min_slp/100
     endif
+    if keyword_set(output_atcf) then begin
+      if start_new_atcf_output_file then openw, atcf_lun, output_atcf, /get_lun
+      start_new_atcf_output_file=0
+      print_atcf, atcf_lun, output_atcf, model_track, debug=debug
+    endif
 
     junk = plot(atimes, xdata, overplot=lineplot, _extra=crud, $
       sym_size=sym_size, thick=thick, color=color, name=init_date)
   endforeach
+  if keyword_set(output_atcf) then free_lun, atcf_lun
+  
   ; bring observed best track time series to front (other time series called 'junk')
   lineplot.Order, /BRING_TO_FRONT
   if not obs.IsEmpty() then begin
@@ -193,7 +212,7 @@ pro plot_storm, adeck_file, bdeck_file=bdeck_file, model=model, ofile=ofile, $
     ii = where(h eq 0, /null)
     if ii ne !NULL then day_str[ii] = string(obs.julday[ii], format='(C(CDI0))')
     obs_days = symbol(obs.lon, obs.lat, /data, label_string=day_str, $
-      label_color='white', label_position='C', label_font_size=3.7, target=map)
+      label_color='white', label_position='C', label_font_size=4.5, target=map)
     ; tried target=map and /relative but put in lower left corner of parent window
 
   endif
@@ -201,15 +220,17 @@ pro plot_storm, adeck_file, bdeck_file=bdeck_file, model=model, ofile=ofile, $
   if 0 then begin
     ; for JOAQUIN cut 40° from east and 20° from north
     ; limit = [limit[0],limit[1],limit[2]-8,limit[3]-40]
+    ; Irma
+    ;t = [17, 272, 35, 303]
 
     t = map.limit
-    t = [20, 270, 40, 290]
+    t = [13, 255, 33.4, 287]
     map.limit = t
     t = lineplot.xrange
-    t = t + [0, -4]
+    t = t + [5.75, -3.75]
     lineplot.xrange = t
-    obs_days.label_font_size=0.55
-    foreach trk, day_of_month_sym do trk.label_font_size=0.35
+    obs_days.label_font_size=1.7
+    foreach trk, day_of_month_sym do trk.label_font_size=1.25
   endif
 
   symbol_label_explan = text((map.limit)[1], (map.limit)[0], /DATA, $
@@ -225,7 +246,7 @@ pro plot_storm, adeck_file, bdeck_file=bdeck_file, model=model, ofile=ofile, $
 
 
   junk = timestamp_text(target=lineplot)
-  l.window.save, ofile, resolution=210
+  l.window.save, ofile, resolution=220
   print, "created "+ofile
   if buffer then l.window.close else stop
 
