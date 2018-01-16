@@ -6,9 +6,19 @@ pro run_plot_storm, forcenew = force_new
     /get_origmesh, model=mpas_mesh('hwt2017'); , parent_id='qn8h9pp21e.66hrbdndmz')
 end
 
+function day_str, atimes
+  caldat, atimes, m, d, y, h
+
+  ; label points with day of month at 0 UTC.
+  day_str = replicate('', n_elements(atimes))
+  ii = where(finite(atimes) and h eq 0, /null)
+  if ii ne !NULL then day_str[ii] = string(atimes[ii], format='(C(CDI0))')
+  return, day_str
+end
+
 pro plot_storm, adeck_file, bdeck_file=bdeck_file, model=model, ofile=ofile, $
   title=title, buffer=buffer, force_new=force_new, get_origmesh= get_origmesh, $
-  tech=tech, toplot=toplot, output_atcf=output_atcf
+  tech=tech, toplot=toplot, output_atcf=output_atcf, ytitle=ytitle
   ; Plot TC track and matching model tracks for one storm.
   ; Plot TC intensity and matching model intensities too.
   ; Input
@@ -22,7 +32,7 @@ pro plot_storm, adeck_file, bdeck_file=bdeck_file, model=model, ofile=ofile, $
     print, "b-deck file "+bdeck_file+" does not begin with 'b'. are you sure about it?"
     stop
   endif
-  
+
   atmos_const
   ;
   ; Read entire atcf file
@@ -30,10 +40,7 @@ pro plot_storm, adeck_file, bdeck_file=bdeck_file, model=model, ofile=ofile, $
   ;  to # of non-duplicated lines. (not used for some reason)
   ;  mcv_lats, mcv_lons, mcv_times, and mcv_intensity, and mcv_id are 2-d arrays that
   ;  will be used below.
-  ; choose GFDL_warmcore_only=0 because a-decks don't generally have a warm core column.
-  ; I added a custom column but only after Nov 2016.
-  GFDL_warmcore_only = 0
-  adeck = read_atcf(adeck_file, GFDL_warmcore_only=GFDL_warmcore_only, tech=tech) ; adeck atcf in knots and nautical miles
+  adeck = read_atcf(adeck_file, tech=tech) ; adeck atcf in knots and nautical miles
   if adeck.IsEmpty() then return
 
   if ~keyword_set(model) then model = mpas_mesh(adeck.tech[0])
@@ -48,6 +55,7 @@ pro plot_storm, adeck_file, bdeck_file=bdeck_file, model=model, ofile=ofile, $
   if ~keyword_set(title) then title = file_dirname(adeck_file)+"!C"+file_basename(adeck_file)
   if ~keyword_set(get_origmesh) then get_origmesh = 0
   if ~keyword_set(toplot) then toplot = 'vmax'
+  if ~keyword_set(ytitle) then ytitle=''
   start_new_atcf_output_file = 1
   close, /all
 
@@ -61,7 +69,9 @@ pro plot_storm, adeck_file, bdeck_file=bdeck_file, model=model, ofile=ofile, $
   lats = adeck.lat
   ; if BDECK, use 'BEST', otherwise use 'CARQ', unless it's w. pacific--then use 'WRNG'
   if strmid(file_basename(bdeck_file),0,1) eq 'b' then tech = 'BEST' else if strpos(file_basename(bdeck_file), 'wp') ne -1 then tech = 'WRNG' else tech = 'CARQ'
-  obs = read_atcf(bdeck_file, GFDL_warmcore_only=0, tech=tech) ; no warm core column in b-deck best track obs.
+  obs = read_atcf(bdeck_file, tech=tech)
+  obstimes = obs.twod.time[*,0] ; Get 1-d array of times from 2-d array of julian day times
+
   if not obs.IsEmpty() then begin
     max_vmax=max(obs.vmax) ; storm name taken from the time with greatest vmax.
     ; there can be multiple times with maximum wind. use the latest one. This helps al082014 (HANNA)
@@ -76,8 +86,8 @@ pro plot_storm, adeck_file, bdeck_file=bdeck_file, model=model, ofile=ofile, $
       print, storm_id + ' ' + stormname + ' is not TS at some point. skipping. '
       return
     endif
-    obs_first = min(obs.julday)
-    obs_last  = max(obs.julday)
+    obs_first = min(obstimes)
+    obs_last  = max(obstimes)
     ; Fix dateline straddle for observed track & model tracks
     lons = [obs.lon, lons] ; make 1-D array of longitudes
     lats = [obs.lat, lats]
@@ -90,16 +100,14 @@ pro plot_storm, adeck_file, bdeck_file=bdeck_file, model=model, ofile=ofile, $
   limit = [min(lats)-2.5, min(lons)-1, max(lats)+1, max(lons)+1]
   ; per idl documentation, lonmax-lonmin must be 360 deg or less
   if limit[3]-limit[1] gt 360 then limit[3] = limit[1]+360
-  
+
   map = map('Cylindrical', limit=limit, font_size=10, fill_color=[235,235,242], $
     margin=[0.08,0.08,0.2,0.15], title=title, layout=[1,2,1], buffer=buffer)
   grid = map.MAPGRID & grid.thick=1 & grid.color='white'& grid.label_color='black'& grid.LABEL_POSITION = 0
   grid.Order, /send_to_back
   legend_items = list()
   day_of_month_sym = list()
-  track_colors = list('red','blue','green', 'gold', 'light sea green', 'cyan', 'salmon', $
-    'pale green', 'silver','yellow','medium orchid','purple','orange','brown','indigo',$
-    'wheat','lime','crimson')
+
   ; got these RGB triplets from from seaborn module in python
   ; import seaborn as sns
   ; import numpy as np
@@ -113,15 +121,16 @@ pro plot_storm, adeck_file, bdeck_file=bdeck_file, model=model, ofile=ofile, $
     [ 167.90588754,   87.0117673 ,   43.55294265],$
     [ 244.41960847,  129.658831  ,  189.95686662],$
     [ 153.00000608,  153.00000608,  153.00000608])
-  m1 = mapcontinents(fill_color='beige', thick=0.5); tried to run this before tracks but it would omit N. Japan & E. Russia!
+  m1 = mapcontinents(fill_color='beige', thick=0.5, /hires); tried to run this before tracks but it would omit N. Japan & E. Russia!
   ; even tried variants of /continents, /countries, /hires. IDL is a joke now.
   crud = {sym_filled:1, transparency:0.3, linestyle:'solid', symbol:"circle", $
     sym_transparency:0.3}
 
-  lineplot = plot(obs.julday, obs[toplot], layout=[1,2,2], ytitle='', $ # placeholder for y-axis title (or else is cut off)
-    sym_size=0.69, thick=1.5, name=stormname, _extra=crud, xtitle='Date', $
+  lineplot = plot(obstimes, obs.twod[toplot], layout=[1,2,2], ytitle=ytitle, $ # placeholder for y-axis title (or else is cut off)
+    sym_size=0.62, thick=1.5, name=stormname, _extra=crud, xtitle='Date', $
     title=stormname+" "+tech+" and "+model.name+" tracks "+toplot, /current, $
-    xrange=[min(adeck.times),max(adeck.times)], uvalue=toplot) ; experimented with uvalue - not used. 
+    xrange=[min(adeck.time),max(adeck.time)], uvalue=toplot) ; experimented with uvalue - not used.
+
 
   lineplot.Refresh, /disable
   map.Refresh, /disable
@@ -139,43 +148,43 @@ pro plot_storm, adeck_file, bdeck_file=bdeck_file, model=model, ofile=ofile, $
     thick = 1.1
     sym_size = 0.51
     ; Replaced * with ifinite to avoid  arithmetic error: Floating illegal operand
-    ifinite = where(finite(adeck.lons[i,*]), ntimes, /null)
+    ifinite = where(finite(adeck.twod.lon[i,*]), ntimes, /null)
     min_duration_days = 0
     if n_elements(adeck.id) gt 40 then begin ; ran this block on Ryder's 4-km tracks to filter out short, non-tropical tracks
       track_name = stid ; good for multiple storms
       min_duration_days = 3
-      tmp_duration = max(adeck.times[i,ifinite]) - min(adeck.times[i,ifinite])
+      tmp_duration = max(adeck.twod.time[i,ifinite]) - min(adeck.twod.time[i,ifinite])
       if tmp_duration lt min_duration_days then begin
         print, id + string(format='(i3)',tmp_duration)+ " days too short, not plotting"
         continue
       endif
-      ; use adeck.lats, not adeck.lat. lats is 2d lat is 1d. Is there a better naming convention?
-      if min(abs(adeck.lats[i,ifinite])) gt 33. then begin
+      ; use adeck.twodlat, not adeck.lat. lats is 2d lat is 1d. Is there a better naming convention?
+      if min(abs(adeck.twod.lat[i,ifinite])) gt 33. then begin
         print, id + " poleward of 33, not plotting"
         continue
       endif
     endif
-    if max(adeck.vmax2d[i,ifinite]) lt 34. then begin
+    if max(adeck.twod.vmax[i,ifinite]) lt 34. then begin
       print, id + " max vmax < 34, not plotting"
       continue
     endif
+
+
+    ;if init_date lt '2017090100' or init_date gt '2017091200' then continue
+
     model_track = {tracks_file:adeck_file, init_time:init_time, init_date:init_date, $
-      lon: adeck.lons[i,ifinite], lat: adeck.lats[i,ifinite], times:adeck.times[i,ifinite], $
-      model_name: model.name, id:id, gfdl_warmcore_only:gfdl_warmcore_only, stormname:stormname}
+      lon: adeck.twod.lon[i,ifinite], lat: adeck.twod.lat[i,ifinite], times:adeck.twod.time[i,ifinite], $
+      model_name: model.name, id:id, stormname:stormname}
 
     legend_items.add, plot(model_track.lon, model_track.lat, /data, _extra=crud, thick=thick, color=color, $
       sym_size=sym_size, name=track_name, overplot=map)
     atimes = model_track.times
-    caldat, atimes, m, d, y, h
-
     ; label tracks with day of month at 0 UTC.
-    day_str = replicate('', n_elements(atimes))
-    ii = where(finite(atimes) and h eq 0, /null)
-    if ii ne !NULL then day_str[ii] = string(atimes[ii], format='(C(CDI0))')
-    day_of_month_sym.add, symbol(model_track.lon, model_track.lat, /data, label_string=day_str,$
-      label_color=contrasting_color(color),label_position='C', label_font_size=2)
+    day_of_month_sym.add, symbol(model_track.lon, model_track.lat, /data, label_string=day_str(atimes),$
+      label_color=contrasting_color(color),label_position='C', label_font_size=2.75)
 
-    xdata = (adeck[toplot+'2d'])[i,ifinite]
+    xdata = (adeck.twod[toplot])[i,ifinite]
+
     if get_origmesh then begin
       iens = strpos(file_basename(adeck_file), "ens_")
       if iens eq -1 then stop
@@ -194,25 +203,28 @@ pro plot_storm, adeck_file, bdeck_file=bdeck_file, model=model, ofile=ofile, $
       print_atcf, atcf_lun, output_atcf, model_track, debug=debug
     endif
 
-    junk = plot(atimes, xdata, overplot=lineplot, _extra=crud, $
+    model_timeseries = plot(atimes, xdata, overplot=lineplot, _extra=crud, $
       sym_size=sym_size, thick=thick, color=color, name=init_date)
+
   endforeach
   if keyword_set(output_atcf) then free_lun, atcf_lun
-  
-  ; bring observed best track time series to front (other time series called 'junk')
+
+  ; bring observed best track time series to front (other time series called 'model_timeseries')
   lineplot.Order, /BRING_TO_FRONT
+  lineplot_day_label = symbol(obstimes, obs.twod[toplot], /data, label_string=day_str(obstimes), $
+    label_color='white', label_position='C', label_font_size=3.8, target=lineplot)
+
+
   if not obs.IsEmpty() then begin
     observed_track = plot(obs.lon, obs.lat, /data, _extra=crud, $
       sym_size=lineplot.sym_size, thick=lineplot.thick, color=lineplot.color, $
       overplot=map, name=stormname)
 
     legend_items.add, observed_track, 0 ; insert at the beginning of list
-    day_str = replicate('', n_elements(obs.julday))
-    caldat, obs.julday, m, d, y, h
-    ii = where(h eq 0, /null)
-    if ii ne !NULL then day_str[ii] = string(obs.julday[ii], format='(C(CDI0))')
-    obs_days = symbol(obs.lon, obs.lat, /data, label_string=day_str, $
-      label_color='white', label_position='C', label_font_size=4.5, target=map)
+    ; plot obs.lon, obs.lot, obs.time (1d with multple wind threshold lines), not obstimes
+    obs_days = symbol(obs.lon, obs.lat, /data, label_string=day_str(obs.time), $
+      label_color='white', label_position='C', $
+      label_font_size=lineplot_day_label.label_font_size, target=map)
     ; tried target=map and /relative but put in lower left corner of parent window
 
   endif
@@ -224,29 +236,33 @@ pro plot_storm, adeck_file, bdeck_file=bdeck_file, model=model, ofile=ofile, $
     ;t = [17, 272, 35, 303]
 
     t = map.limit
-    t = [13, 255, 33.4, 287]
+    ;t = [12, 267, 43, 323] ; 1st zoom for Rebecca's Irma plot
+    t = [17.5, 271, 31, 297] ; 2nd zoom for Rebecca's Irma plot
+    font_size = 0.102 * (t[2]-t[0])
+    m1.thick = 0.35
+    obs_days.label_font_size=font_size
+    foreach trk, day_of_month_sym do trk.label_font_size=0.7*font_size
     map.limit = t
+
     t = lineplot.xrange
-    t = t + [5.75, -3.75]
+    t = t + [3, -3]
     lineplot.xrange = t
-    obs_days.label_font_size=1.7
-    foreach trk, day_of_month_sym do trk.label_font_size=1.25
   endif
 
   symbol_label_explan = text((map.limit)[1], (map.limit)[0], /DATA, $
-    'Tracks labeled with day of month at 0 UTC', font_size=6)
+    ' labeled with day of month at 0 UTC!C', font_size=6)
   ; tried target=map and /relative but put in lower left corner of parent window
   font_size = 4 > (110/legend_items.length) < 9 ; between 4 and 9
   l = legend(target=legend_items,font_size=font_size,vertical_alignment=0.65, shadow=0, $
     horizontal_alignment='right')
   l.position = [0.998,0.75]; doesn't work when called with this as keyword.
-  
+
   map.Refresh
   pretty_TC_intensity, lineplot, toplot=toplot
 
 
   junk = timestamp_text(target=lineplot)
-  l.window.save, ofile, resolution=220
+  l.window.save, ofile, resolution=240
   print, "created "+ofile
   if buffer then l.window.close else stop
 
