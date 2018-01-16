@@ -72,9 +72,9 @@ pro find_matching_model_track, bdeck_file, model=model, force_new=force_new, deb
   if n_elements(trackertype) eq 0 then trackertype = 'tcgen'
   min_duration_days = 1.d  ; minimum duration of model model_track to consider (unless observation is on boundary of model time window)
   if ~keyword_set(force_new) then force_new = 0 ; force_new=1 forces atcf file and vitals save file to be remade.
-  if n_elements(bdeck_file) eq 0 then bdeck_file = '/glade/p/work/ahijevyc/atcf/bwp202017.dat'
-  parent_id = '8gyjo70yql' ; '2pm8jrq5ej';  '7s8dc9hui8'
-  if ~keyword_set(model) then model = mpas_mesh('GFS') else if isa(model,/scalar) then model=mpas_mesh(model)
+  if n_elements(bdeck_file) eq 0 then bdeck_file = '/glade/p/work/ahijevyc/atcf/bal112017.dat'
+  parent_id = '9qw58wx10r'
+  if ~keyword_set(model) then model = mpas_mesh('uni') else if isa(model,/scalar) then model=mpas_mesh(model)
   total_model_days = strmatch(model.name, 'GFS*') ? 8d : 10d
   if (model.name eq 'mpas15_3') then total_model_days = 3d
   ; If set, GFDL_warmcore_only will make sure at least one time is warm core in the model track
@@ -105,7 +105,7 @@ pro find_matching_model_track, bdeck_file, model=model, force_new=force_new, deb
   storm_id = strmid(file_basename(bdeck_file),1,8)
   ; if BDECK, use 'BEST', otherwise use 'CARQ', unless it's w. pacific--then use 'WRNG'
   if strmid(file_basename(bdeck_file),0,1) eq 'b' then tech = 'BEST' else if strpos(file_basename(bdeck_file), 'wp') ne -1 then tech = 'WRNG' else tech = 'CARQ'
-  obs = read_atcf(bdeck_file, GFDL_warmcore_only = 0, tech=tech) ; no warm core column in b-deck best track obs.
+  obs = read_atcf(bdeck_file, tech=tech, rad=34) ; only get 0 and 34-kt lines.
   max_vmax=max(obs.vmax) ; storm name taken from the time with greatest vmax.
   ; there can be multiple times with maximum wind. use the latest one. This helps al082014 (HANNA)
   ; it is only INVEST for the first time it reaches max wind speed but becomes HANNA later.
@@ -133,17 +133,17 @@ pro find_matching_model_track, bdeck_file, model=model, force_new=force_new, deb
     return
   endif
 
-  obs_first = min(obs.julday)
-  obs_last  = max(obs.julday)
+  obs_first = min(obs.time)
+  obs_last  = max(obs.time)
 
   print, stormname, obs_first, obs.lon[0], obs.lat[0], obs_last, format='(A,1x,C(),F7.1,"E",F6.1,"N ",C())'
-  if debug ge 1 then print, string(obs.julday, format='(C())') + string(obs.lon, format='(F7.1,"E")') + $
+  if debug ge 1 then print, string(obs.time, format='(C())') + string(obs.lon, format='(F7.1,"E")') + $
     string(obs.lat, format='(F6.1,"N")')
 
   ; find the first time the storm reaches TS strength (34 kt)
   i_TS_strength = where(obs.vmax ge 34, /null) ; obs (atcf format) is in knots
   ; if it never reaches TS strength use time=infinity
-  TS_first_time = i_TS_strength ne !NULL ? obs.julday[min(i_TS_strength)] : !VALUES.D_INFINITY
+  TS_first_time = i_TS_strength ne !NULL ? obs.time[min(i_TS_strength)] : !VALUES.D_INFINITY
 
   ; Find the model tracks files for overlapping model runs for this particular model type and smoothing radius.
   search_str = possible_fort66_dirs +'/'+year+'[01][0-9][0-3][0-9][012][0-9]'+$
@@ -186,12 +186,11 @@ pro find_matching_model_track, bdeck_file, model=model, force_new=force_new, deb
     ;if init_date ne '2017080400' then continue
 
     ; Read entire atcf file (usually fort.64 or fort.66)
-    ; gfdl_m structure will have a 1-D array for each atcf column with lengths equal
-    ; to # of non-duplicated lines. (not used for some reason)
-    ; mcv_lats, mcv_lons, mcv_times, and mcv_intensity, and mcv_id are 2-d arrays that
-    ; will be used below.
+    ; gfdl_m dictionary will have a 1-D array for each atcf column
+    ; mcv_lats, mcv_lons, mcv_times, and mcv_intensity, and mcv_id are 2-d arrays with
+    ; dimensions [storm, time]. They will be used below.
     gfdl_m = read_atcf(model_tracks_files[iinit], lats=mcv_lats, lons=mcv_lons, times=mcv_times, $
-      intensity=mcv_intensity, id=mcv_id, GFDL_warmcore_only=GFDL_warmcore_only)
+      intensity=mcv_intensity, id=mcv_id)
     ; Be aware of bad tc_vitals files that cause zero lat/lon in GFDL tracker output.
     ibad_tc_vitals = where(gfdl_m.lat eq 0 and gfdl_m.lon eq 0, /null)
     if ibad_tc_vitals ne !NULL then begin
@@ -208,9 +207,7 @@ pro find_matching_model_track, bdeck_file, model=model, force_new=force_new, deb
 
     matching_model_tracks = LIST()
     ; Loop through each model_track in the model tracks file
-    ; Count tracks. read_atcf may have returned missing values in the place of tracks
-    ; if GFDL_warmcore_only is set.
-    ntrack = total(finite(mcv_times[*,0]))
+    ntrack = n_elements(mcv_times[*,0])
     if debug ge 1 then print, model_tracks_files[iinit], ' found ', strtrim(ntrack,2),' ',model.name,' tracks'
     for itrack = 0, ntrack-1 do begin
       early_distance_match_time=0d
@@ -232,14 +229,23 @@ pro find_matching_model_track, bdeck_file, model=model, force_new=force_new, deb
       ; Would like to allow for smaller minimum duration if storm moves off grid, like AL082014 Gonzalo in
       ; 20141019 run.   It is tracked in 0-6 hours, but goes off grid at f012. Can't be matched here
       ; yet still shows up as potential match because best track goes to 20141019 18Z.
-      tmp_min_duration = min([min_duration_days, obs.julday[-1]-init_time, init_time+total_model_days -obs.julday[0]])
+      tmp_min_duration = min([min_duration_days, obs.time[-1]-init_time, init_time+total_model_days -obs.time[0]])
       if last_time - first_time lt tmp_min_duration then begin
         if debug ge 2 then print, 'track '+mcv_id[itrack]+' does not last ', string(tmp_min_duration,format='(F5.2)'),' days. Skipping'
         continue
       endif
 
-      for itime=0, n_elements(obs.julday)-1 do begin
-        observed_time = obs.julday[itime]
+      ; Requre gfdl_warmcore_only warm core times for this track to count.
+      nwarmcore = total(gfdl_m.twod.warmcore[itrack,*] eq 'Y')
+      if debug then print, mcv_id[itrack], nwarmcore, format='(A," found ",I0," warm core times.")'
+      if nwarmcore lt gfdl_warmcore_only then begin
+        print, mcv_id[itrack], gfdl_warmcore_only, nwarmcore, format='(A,I0," warm core times required. Found only ",I0,".")'
+        continue
+      endif
+
+
+      for itime=0, n_elements(obs.time)-1 do begin
+        observed_time = obs.time[itime]
         ; if this observed time is outside the time range of this model_track, then skip it.
         ; In the future, one might keep track of how many matches are possible with the nmatchmax variable and assign distances
         ; even if the model_track doesn't exist at this time, like the max search distance (1000km).  In that case
@@ -310,11 +316,11 @@ pro find_matching_model_track, bdeck_file, model=model, force_new=force_new, deb
         if debug ge 1 then print, 'found a match to ', stormname, model_tracks_files[iinit], mcv_id[itrack], format='(2A," in ",A,": ", A)'
         last_itime = max(where(finite(mcv_times[itrack,*]),/NULL))
 
-        i0 = value_locate(obs.julday, mcv_times[itrack,0])
-        i1 = value_locate(obs.julday, mcv_times[itrack,last_itime])
+        i0 = value_locate(obs.time, mcv_times[itrack,0])
+        i1 = value_locate(obs.time, mcv_times[itrack,last_itime])
         if i1 - i0 gt 0 then begin
           obs_uv = get_uv(obs.lon[i0],obs.lat[i0],obs.lon[i1],obs.lat[i1],$
-            obs.julday[i0],obs.julday[i1],debug=debug)
+            obs.time[i0],obs.time[i1],debug=debug)
           uv = get_uv(mcv_lons[itrack,0],mcv_lats[itrack,0],mcv_lons[itrack,last_itime],mcv_lats[itrack,last_itime],$
             mcv_times[itrack,0],mcv_times[itrack,last_itime], debug=debug)
           vmd =  sqrt(total((obs_uv-uv)^2.)) ; magnitude of vector motion difference
@@ -356,11 +362,11 @@ pro find_matching_model_track, bdeck_file, model=model, force_new=force_new, deb
 
     missformat =  '(A8,x,A-16,x,2C(CYI4.4,CMOI2.2,CDI2.2,CHI2.2,x),F7.1,"E",F6.1,"N",I4," kt fh=",I3,A15," genesis_fh=",I4)'
     if matching_model_tracks.count() eq 0 then begin
-      imisses = where(obs.julday ge init_time and obs.julday le (init_time + total_model_days),/null)
+      imisses = where(obs.time ge init_time and obs.time le (init_time + total_model_days),/null)
       ; NO matching model track for the observed best track in this bdeck file.
       print, 'COMPLETE MISS: '+strmid(file_basename(bdeck_file),1,2)+' '+stormname+ ' '+model.name+' '+ model_tracks_files[iinit]
-      foreach imiss,imisses do printf, misses_lun, storm_id, stormname, init_time, obs.julday[imiss], $
-        obs.lon[imiss],obs.lat[imiss],obs.vmax[imiss], 24d*(obs.julday[imiss]-init_time),$
+      foreach imiss,imisses do printf, misses_lun, storm_id, stormname, init_time, obs.time[imiss], $
+        obs.lon[imiss],obs.lat[imiss],obs.vmax[imiss], 24d*(obs.time[imiss]-init_time),$
         "completemiss", 24d*(TS_first_time-init_time), format=missformat
     endif else begin
 
@@ -368,16 +374,16 @@ pro find_matching_model_track, bdeck_file, model=model, force_new=force_new, deb
       ;  there is a potential model track.
       ; Not sure I want to only interpolate to the observed times . That makes sense when there are gaps between
       ; matching model tracks, but can u keep times in the matching model tracks that are not in the observed tracks?
-      matching_model_track = join_model_tracks(matching_model_tracks, obs.julday)
+      matching_model_track = join_model_tracks(matching_model_tracks, obs.time)
       duration_h = (max(matching_model_track.times) - min(matching_model_track.times)) * 24
       print, stormname + ' best match is ' + strjoin(matching_model_track.id,'/'), model_tracks_files[iinit],$
         max(matching_model_track.intensity), duration_h, format='(A, " in ", A," ",E8.1,I4,"h")'
 
-      imisses = where(obs.julday ge init_time and obs.julday le (init_time + total_model_days)$
-        and (obs.julday lt min(matching_model_track.times) or obs.julday gt max(matching_model_track.times)),/null)
+      imisses = where(obs.time ge init_time and obs.time le (init_time + total_model_days)$
+        and (obs.time lt min(matching_model_track.times) or obs.time gt max(matching_model_track.times)),/null)
       ; There is a matching model track for this observed best track, but not at these particular times.
-      foreach imiss,imisses do printf, misses_lun, storm_id, stormname, init_time, obs.julday[imiss], $
-        obs.lon[imiss],obs.lat[imiss],obs.vmax[imiss], 24d*(obs.julday[imiss]-init_time),$
+      foreach imiss,imisses do printf, misses_lun, storm_id, stormname, init_time, obs.time[imiss], $
+        obs.lon[imiss],obs.lat[imiss],obs.vmax[imiss], 24d*(obs.time[imiss]-init_time),$
         "partial_miss", 24d*(TS_first_time-init_time), format=missformat
 
       matching_model_track = add_vitals(list(matching_model_track), model, origmesh=origmesh)
