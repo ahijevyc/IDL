@@ -47,7 +47,11 @@ pro fill_vitals, mpas, iCells, init_date, valid_time, vitals, vital_itimes, mode
   init_hh = strmid(init_date,8,2)
   diag_datestr = 'diag*.' + string(valid_time, format = '( C(CYI4.4,"-",CMOI2.2,"-",CDI2.2,"_",CHI2.2,".",CMI2.2,".00"))') + '.nc'
 
-  ; GFS has different filename convention.
+  ; GFS may be named many ways:
+  ; 2017090900_i00_f000_GFS.nc
+  ; gfs_4_20170909_0000_000.grb2.nc
+  ; gfs.t00z.pgrb2.0p25.f000.nc
+  ; gfs.0p25.2017090900.f000.grib2.nc
   if strmatch(mpas.name,'GFS*') then begin
     fh = round(24*(valid_time - julday(strmid(init_date,4,2),strmid(init_date,6,2),strmid(init_date,0,4),init_hh,0,0)))
     diag_datestr = [init_date + "_i"+init_hh+"_f" + string(fh, format='(I3.3)') + '_' + mpas.name +'.nc',$
