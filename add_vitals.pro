@@ -4,18 +4,18 @@ function vitals_structure, ntimes
     max_spd10m:{field:'speed10',            range:[0,250],   op:'max',  data:data} $
     ,min_slp:   {field:'mslp',               range:[0,100],   op:'min',  data:data} $
     ,maxr_s10m: {field:'speed10',            range:[0,250],   op:'maxr', data:data} $
-    ;    ,NE34:      {field:'speed10',            range:[0,600],   op:'NE34', data:data} $
-    ;    ,SE34:      {field:'speed10',            range:[0,600],   op:'SE34', data:data} $
-    ;    ,SW34:      {field:'speed10',            range:[0,600],   op:'SW34', data:data} $
-    ;    ,NW34:      {field:'speed10',            range:[0,600],   op:'NW34', data:data} $
-    ;    ,NE50:      {field:'speed10',            range:[0,500],   op:'NE50', data:data} $
-    ;    ,SE50:      {field:'speed10',            range:[0,500],   op:'SE50', data:data} $
-    ;    ,SW50:      {field:'speed10',            range:[0,500],   op:'SW50', data:data} $
-    ;    ,NW50:      {field:'speed10',            range:[0,500],   op:'NW50', data:data} $
-    ;    ,NE64:      {field:'speed10',            range:[0,500],   op:'NE64', data:data} $
-    ;    ,SE64:      {field:'speed10',            range:[0,500],   op:'SE64', data:data} $
-    ;    ,SW64:      {field:'speed10',            range:[0,500],   op:'SW64', data:data} $
-    ;    ,NW64:      {field:'speed10',            range:[0,500],   op:'NW64', data:data} $
+        ,NE34:      {field:'speed10',            range:[0,600],   op:'NE34', data:data} $
+        ,SE34:      {field:'speed10',            range:[0,600],   op:'SE34', data:data} $
+        ,SW34:      {field:'speed10',            range:[0,600],   op:'SW34', data:data} $
+        ,NW34:      {field:'speed10',            range:[0,600],   op:'NW34', data:data} $
+        ,NE50:      {field:'speed10',            range:[0,500],   op:'NE50', data:data} $
+        ,SE50:      {field:'speed10',            range:[0,500],   op:'SE50', data:data} $
+        ,SW50:      {field:'speed10',            range:[0,500],   op:'SW50', data:data} $
+        ,NW50:      {field:'speed10',            range:[0,500],   op:'NW50', data:data} $
+        ,NE64:      {field:'speed10',            range:[0,500],   op:'NE64', data:data} $
+        ,SE64:      {field:'speed10',            range:[0,500],   op:'SE64', data:data} $
+        ,SW64:      {field:'speed10',            range:[0,500],   op:'SW64', data:data} $
+        ,NW64:      {field:'speed10',            range:[0,500],   op:'NW64', data:data} $
     ;    ,t850_core: {field:'temperature_850hPa', range:[0,100],   op:'mean', data:data} $
     ;    ,t500_core: {field:'temperature_500hPa', range:[0,100],   op:'mean', data:data} $
     ;    ,t200_core: {field:'temperature_200hPa', range:[0,100],   op:'mean', data:data} $
@@ -73,6 +73,13 @@ function add_vitals, model_tracks, mpas, origmesh=origmesh
           vitals.SW34.data       = interpol_nan(t.rad3[ig] * nm2km, t.julday[ig], model_track.times)
           vitals.NW34.data       = interpol_nan(t.rad4[ig] * nm2km, t.julday[ig], model_track.times)
         endif
+        if total(strmatch(tag_names(vitals),'NE64')) then begin
+          ; return max radii of wind threshold and radius of max wind in km
+          vitals.NE64.data       = interpol_nan(t.rad1[ig] * nm2km, t.julday[ig], model_track.times)
+          vitals.SE64.data       = interpol_nan(t.rad2[ig] * nm2km, t.julday[ig], model_track.times)
+          vitals.SW64.data       = interpol_nan(t.rad3[ig] * nm2km, t.julday[ig], model_track.times)
+          vitals.NW64.data       = interpol_nan(t.rad4[ig] * nm2km, t.julday[ig], model_track.times)
+        endif
         vitals.maxr_s10m.data  = interpol_nan( t.mrd[ig] * nm2km, t.julday[ig], model_track.times)
         for itag=0,n_tags(vitals)-1 do begin
           field = (tag_names(vitals))[itag]
@@ -86,14 +93,17 @@ function add_vitals, model_tracks, mpas, origmesh=origmesh
 
   ; Get vitals from raw mesh (as opposed to fort.66 GFDL tracker output) - MPAS and even GFS!
 
+  ; 
   ; possible directories of raw model diagnostic files
   model_basedirs = '/glade/scratch/' + ['ahijevyc','mpasrt'] + "/" + mpas.name + "/" + init_date + '/'
 
   ; Look in subdirectory under date directory
   ; "rt" for Joaquin 2015 "ecic" for Harvey / Irma 2017.
   ; Alter search_str in find_matching_model_vitals.pro for fort.66 locations.
+  ; Could check model_track[n].tracks_file to make sure model_basedirs is 3 directories up. (init_date/lat*/gfdl*/tcgen|tracker/
+
   ;model_basedirs = [model_basedirs+'rt/', model_basedirs] ; list /rt first. If multiple directories have diagnostic file, use 1st one.
-  ;model_basedirs = "/glade/scratch/mpasrt/"+mpas.name+"/"+init_date+"/ecic/"
+  ; model_basedirs = "/glade/scratch/mpasrt/"+mpas.name+"/"+init_date+"/ecic/"
 
 
   ; tear apart rows of data in each track
