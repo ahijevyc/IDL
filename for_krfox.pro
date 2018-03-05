@@ -4,20 +4,19 @@
 
 pro for_krfox, track_in=track_in, stormname=stormname, outfile=outfile
   ; ATCF file with MPAS track
-  if ~keyword_set(track_in) then track_in = '/glade/scratch/krfox/Data/Bad_Storm_Data/lc130_storm_1574.dat'
-  if ~keyword_set(stormname) then stormname='RAFAEL'
+  if ~keyword_set(track_in) then track_in = '/glade/scratch/krfox/Data/Good_Storm_Data/storm_1574.dat'
+  if ~keyword_set(stormname) then stormname='NILAM'
   ; Output filename should start with an "a"
   ; "a" stands for "a-deck", next 2 letters are the basin, next 2 digits are the storm number.
   ; The rest may be anything. The basin and storm number are used in the atcf output.
-  if ~keyword_set(outfile) then outfile = 'aal17.out.txt'
+  if ~keyword_set(outfile) then outfile = 'aio02.out.txt'
   ; GFDL_warmcore_only=0 means don't require warm core
   GFDL_warmcore_only = 0
   ; Minimum duration in days
   min_duration_days = 0.
   
   ; Read ATCF file with MPAS track(s)
-  adeck = read_atcf(track_in, lats=lats, lons=lons, times=times, $
-    intensity=intensity, id=mcv_id, GFDL_warmcore_only=GFDL_warmcore_only)
+  adeck = read_atcf(track_in, lats=lats, lons=lons, times=times, intensity=intensity, id=mcv_id)
   ; Get lat/lon of MPAS mesh.
   model = mpas_mesh('4km')
   bdeck_file = ''
@@ -35,7 +34,8 @@ pro for_krfox, track_in=track_in, stormname=stormname, outfile=outfile
     model_name:model.name, bdeck_file:bdeck_file, stormname:stormname, $
     GFDL_warmcore_only: GFDL_warmcore_only, min_duration_days:min_duration_days}
 
-  matching_model_track = add_vitals(list(matching_model_track), model, origmesh=origmesh)
+  matching_model_track = add_vitals(list(matching_model_track), model, origmesh=origmesh, $
+     model_basedirs='/glade/scratch/fjudt/MPAS-optimized-noPIO/4km/run/2012_10_20/ctrl_20d/', /ignore_parent_id)
   matching_model_track = matching_model_track[0] ; un-"list" matching_model_track.
 
   openw, atcf_lun, outfile, /get_lun
