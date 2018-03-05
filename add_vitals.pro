@@ -33,10 +33,11 @@ function vitals_structure, ntimes
 end
 
 
-function add_vitals, model_tracks, mpas, origmesh=origmesh
+function add_vitals, model_tracks, mpas, origmesh=origmesh, model_basedirs=model_basedirs, ignore_parent_id=ignore_parent_id
   ; Takes a list of tracks (model_tracks)
   ; Lists come from get_all_model_vitals or find_matching_model_track
   if n_elements(origmesh) eq 0 then origmesh = 1
+  if n_elements(ignore_parent_id) eq 0 then ignore_parent_id = 0
   atmos_const
   init_date = model_tracks[0].init_date
   ntracks = model_tracks.count()
@@ -95,7 +96,8 @@ function add_vitals, model_tracks, mpas, origmesh=origmesh
 
   ; 
   ; possible directories of raw model diagnostic files
-  model_basedirs = '/glade/scratch/' + ['ahijevyc','mpasrt'] + "/" + mpas.name + "/" + init_date + '/'
+  if ~keyword_set(model_basedirs) then $
+    model_basedirs = '/glade/scratch/' + ['ahijevyc','mpasrt'] + "/" + mpas.name + "/" + init_date + '/'
 
   ; Look in subdirectory under date directory
   ; "rt" for Joaquin 2015 "ecic" for Harvey / Irma 2017.
@@ -135,7 +137,7 @@ function add_vitals, model_tracks, mpas, origmesh=origmesh
     ; vital_itimes will be used to locate the time indicies that match this vitals time.
     vital_itimes = where(times eq vitals_times[itime], /null)
     fill_vitals, mpas, mcv_nearestCells[vital_itimes], init_date, vitals_times[itime], vitals, vital_itimes, $
-      model_basedirs, model_file=model_file ; , /ignore_parent_id
+      model_basedirs, model_file=model_file, ignore_parent_id=ignore_parent_id
     model_files.add, model_file
   endfor
 
