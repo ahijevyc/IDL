@@ -93,25 +93,27 @@ pro fill_vitals, mpas, iCells, init_date, valid_time, vitals, vital_itimes, mode
   print, "fill_vitals: opened "+model_file
 
 
-  tmp = ncdf_attinq(ncid, "parent_id", /global)
-  if tmp.DATATYPE ne "UNKNOWN" then begin
-    ; Sanity check
-    ; make sure we have the right mpas mesh. with the right latCells, lonCells, etc.
-    ; We have two meshes named 'wp'. One for 2016 and before one for 2017 onward.
-    ; We should differentiate them by their parent_id attribute.
-    ; However, after topo and gwd were updated, around Oct 1, the parent id changed
-    ; without changing the mesh.
-    ncdf_attget, ncid, "parent_id", model_file_parent_id, /GLOBAL
-    model_file_parent_id = string(model_file_parent_id) ; convert from char to string
-    matchinit = 0
-    ; are any init.nc parent ids in the model file parent id?
-    foreach parent_id, mpas.parent_id do begin
-      if strpos(model_file_parent_id, parent_id) ne -1 then matchinit = 1
-    endforeach
-    if not matchinit and not ignore_parent_id then begin
-      print, "looking for init.nc mesh parent_id "+mpas.parent_id+" in model file parent_id"
-      print, 'init.nc mesh parent_id not in '+model_file_parent_id
-      stop
+  if not ignore_parent_id then begin
+    tmp = ncdf_attinq(ncid, "parent_id", /global)
+    if tmp.DATATYPE ne "UNKNOWN" then begin
+      ; Sanity check
+      ; make sure we have the right mpas mesh. with the right latCells, lonCells, etc.
+      ; We have two meshes named 'wp'. One for 2016 and before one for 2017 onward.
+      ; We should differentiate them by their parent_id attribute.
+      ; However, after topo and gwd were updated, around Oct 1, the parent id changed
+      ; without changing the mesh.
+      ncdf_attget, ncid, "parent_id", model_file_parent_id, /GLOBAL
+      model_file_parent_id = string(model_file_parent_id) ; convert from char to string
+      matchinit = 0
+      ; are any init.nc parent ids in the model file parent id?
+      foreach parent_id, mpas.parent_id do begin
+        if strpos(model_file_parent_id, parent_id) ne -1 then matchinit = 1
+      endforeach
+      if not matchinit then begin
+        print, "looking for init.nc mesh parent_id "+mpas.parent_id+" in model file parent_id"
+        print, 'init.nc mesh parent_id not in '+model_file_parent_id
+        stop
+      endif
     endif
   endif
 
