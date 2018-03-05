@@ -8,6 +8,11 @@ function mpas_read, file, field=field, ncid=ncid
   var_names = list()
   for i=0,n_elements(varids)-1 do var_names.add, (ncdf_varinq(ncid, varids[i])).name
 
+  if keyword_set(field) and var_names.where(field) eq !NULL then begin
+    print, field, " not found in ",file
+    return, !NULL
+  endif
+
   if var_names.where('u10') ne !NULL and not strmatch(file, '*init.nc') then begin
     if keyword_set(field) then begin
       if strmatch(field,'speed10',/fold) then begin
@@ -138,7 +143,13 @@ function mpas_read, file, field=field, ncid=ncid
     if keyword_set(ncid) eq 0 then ncdf_close, ncid
     return, keyword_set(field) ? f[field] : f
 
-  endif
+  endif else begin
+    print, "file",file," does not meet expectations"
+    if keyword_set(field) then print, "asked for ", field
+    print, "found", var_names
+    stop
+  endelse
+
   if keyword_set(ncid) eq 0 then NCDF_CLOSE, ncid
 
   ; Extract parent_id attribute
