@@ -217,7 +217,7 @@ function read_atcf, file, lats=lat2D, lons=lon2D, times=time2D, intensity=vmax2D
     ; why filter by rad? twod arrays are expected to only have 0 & 34-kt wind lines. 
     icy = where(storms eq stormid and (t.rad eq 0 or t.rad eq 34), nt, /null)
     if icy eq !NULL then begin
-      print, stormid, "no 0 or 34-kt wind lines. Did you filter them out with rad keyword?"
+      print, stormid, " no 0 or 34-kt wind lines. Did you filter them out with rad keyword?"
       stop
     endif
     lat2D[istorm,0:nt-1]      = t.lat[icy]
