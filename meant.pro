@@ -263,4 +263,3 @@ pro meanT
     add_latlon_field, file, {data:est1, name:'est1_meanT_500_300', long_name:ytickname[4]}
   endfor
 end
-

@@ -120,10 +120,10 @@ pro get_nexrad_composite_png, julday=julday, type=type, region=region
       lonmax=-94.
     end
     'southeast' : begin
-      latmin=24.
-      latmax=35.5
-      lonmin=-91
-      lonmax=-76.5
+      latmin=24.5
+      latmax=35
+      lonmin=-90
+      lonmax=-75.5
     end
     'south_missvly' : begin
       latmin=28.5
@@ -215,7 +215,6 @@ pro get_nexrad_composite_png, julday=julday, type=type, region=region
     result = oUrl->Get(filename=localfile,url=url)
     obj_destroy, oUrl
   endif
-
   dummy = query_png(localfile, info)
   nx = info.dimensions[0]
   ny = info.dimensions[1]
@@ -238,8 +237,6 @@ pro get_nexrad_composite_png, julday=julday, type=type, region=region
   ;      print, r[0:30]
   ;      print, g[0:30]
   ;      print, b[0:30]
-
-
   url = strmid(url,0,strlen(url)-3)+'wld'
   localfile = strmid(localfile,0,strlen(localfile)-3)+'wld'
   if file_test(localfile) eq 0 then begin
@@ -248,9 +245,8 @@ pro get_nexrad_composite_png, julday=julday, type=type, region=region
     result = oUrl->Get(filename=localfile,url=url)
     obj_destroy, oUrl
   endif
-
-
-
+  
+  
   u=read_ascii(localfile)
   wld = double(u.field1)
   ;  A world file file is a plain ASCII text file consisting of six values separated by newlines.
@@ -262,15 +258,15 @@ pro get_nexrad_composite_png, julday=julday, type=type, region=region
   ; negative pixel Y size
   ; X coordinate of upper left pixel center
   ; Y coordinate of upper left pixel center
-
+  
   dx = wld[0]
   dy = -wld[3]
   latmax0=wld[5]+dy/2.
   lonmin0=wld[4]-dx/2.
   lonmax0=lonmin0+nx*dx
   latmin0=latmax0-ny*dy
-
-
+  
+  
   t = map_image(png, startx, starty, xsize, ysize, latmin=latmin0, latmax=latmax0, lonmin=lonmin0, lonmax=lonmax0, scale=0.05, compress=1)
   tvlct, oldct, /get
   tvlct, 255,255,255,0
@@ -290,7 +286,7 @@ pro get_nexrad_composite_png, julday=julday, type=type, region=region
     'n0q' : type_desc = type+' base reflectivity 0.5 dBZ resolution'
     else:stop
   endcase
-
+  
   ; When doing Lance's plots for June 18-22, 2011, I needed to set vertical to zero. Maybe I had it at 1 for Stan's RIP-style plots.
   ; If you get black and white plots, make sure you are not using the rip_mosaic procedure above.
   vertical = 0

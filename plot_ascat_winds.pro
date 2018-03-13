@@ -126,7 +126,6 @@ pro plot_ascat_winds, inpsfile, files, latmin, latmax, lonmin, lonmax, fcst_day=
     file = files[ifile]
     if strmatch(file, '*.nc') eq 1 then begin
       ncid = NCDF_OPEN(file)
-
       flags = getflags(ncid, 'wvc_quality_flag')
       time= getvar(ncid, 'time')
       jday = julday(1,1,1990,0,0,time)
@@ -140,7 +139,6 @@ pro plot_ascat_winds, inpsfile, files, latmin, latmax, lonmin, lonmax, fcst_day=
       wind_speed  = getvar(ncid, 'wind_speed')
       wind_dir    = getvar(ncid, 'wind_dir')
       bs_distance = getvar(ncid, 'bs_distance')
-
       NCDF_CLOSE, ncid      ; Close the NetCDF file
     endif else if strmatch(file_basename(file), 'QS_XWGRD3*') then begin
       resolve_routine, 'read_qscat3', /no_recompile, /compile_full_file
@@ -153,7 +151,7 @@ pro plot_ascat_winds, inpsfile, files, latmin, latmax, lonmin, lonmax, fcst_day=
         type=data_type,caldata=cal
       slab_size=strtrim(dims(1),2)
       ir=0
-
+      
       ; Read the SDSs - compile read_qscat3.pro
       asc_avg_wind_speed= get_sds(sd_id,'asc_avg_wind_speed',ir,slab_size)
       des_avg_wind_speed= get_sds(sd_id,'des_avg_wind_speed',ir,slab_size)
@@ -175,7 +173,7 @@ pro plot_ascat_winds, inpsfile, files, latmin, latmax, lonmin, lonmax, fcst_day=
       des_rain_prob= get_sds(sd_id,'des_rain_prob',ir,slab_size)
       asc_rain_flag= get_sds(sd_id,'asc_rain_flag',ir,slab_size)
       des_rain_flag= get_sds(sd_id,'des_rain_flag',ir,slab_size)
-
+      
       hdf_sd_attrinfo, sd_id, hdf_sd_attrfind(sd_id,'date_of_average'), data=time
       year = strmid(file_basename(file),10,4)
       doy  = strmid(file_basename(file),14,3)
@@ -189,8 +187,8 @@ pro plot_ascat_winds, inpsfile, files, latmin, latmax, lonmin, lonmax, fcst_day=
       des_flags = {knmi_quality_control_fails  :asc_rain_flag ge 4,$
         variational_quality_control_fails  :asc_rain_flag eq -1,$
         rain_detected                      :asc_rain_flag eq 2}
-
-
+        
+        
       ; Select latitude and longitudes
       lat1=latmin
       lat2=latmax
@@ -199,7 +197,6 @@ pro plot_ascat_winds, inpsfile, files, latmin, latmax, lonmin, lonmax, fcst_day=
         print,'ERROR: Latitudes must be between -90 and 90'
         stop
       endif
-
       ; Make sure that lat2 is greater than lat1
       if (lat1 gt lat2) then begin
         itmp=lat1
@@ -207,11 +204,11 @@ pro plot_ascat_winds, inpsfile, files, latmin, latmax, lonmin, lonmax, fcst_day=
         lat2=itmp
       endif
 
+      
       ; The last grid point is in cell 719.  Reduce lat 90. to 89.9
       if (lat2 eq 90.) then begin
         lat2=89.9
       endif
-
       lon1=lonmin
       lon2=lonmax
       if ((lon1 lt 0) or (lon2 lt 0) or (lon1 gt 360) or $
@@ -219,20 +216,17 @@ pro plot_ascat_winds, inpsfile, files, latmin, latmax, lonmin, lonmax, fcst_day=
         print,'ERROR: Longitudes must be between 0 and 360'
         stop
       endif
-
       ; Make sure that lon2 is greater than lon1
       if (lon1 gt lon2) then begin
         itmp=lon1
         lon1=lon2
         lon2=itmp
       endif
-
       ; The last grid point is in cell 1439.  Wrapping is not done here,
       ; so 360, must be reduced to 359.9.
       if (lon2 eq 360.) then begin
         lon2=359.9
       endif
-
       ; Determine grid points from the latitudes and longitudes
       dx=(360./1440.)
       ii1=fix(lon1/dx)
@@ -275,7 +269,6 @@ pro plot_ascat_winds, inpsfile, files, latmin, latmax, lonmin, lonmax, fcst_day=
       ;;    print,'TIME: ',string(wvc_row_time(*,ir))
       ;;    print,'WVC Row: ',wvc_row(ir)
       ;;  endfor
-
       ; Read the SDSs
       wvc_row= get_sds(sd_id,'wvc_row',ir,slab_size)
       wvc_lat= get_sds(sd_id,'wvc_lat',ir,slab_size)
@@ -305,7 +298,7 @@ pro plot_ascat_winds, inpsfile, files, latmin, latmax, lonmin, lonmax, fcst_day=
       srad_rain_rate= get_sds(sd_id,'srad_rain_rate',ir,slab_size)
       wind_dir = wind_dir_selection
       wind_speed = wind_speed_selection
-
+      
       HDF_SD_END,sd_id
       print, string(wvc_row_time(*,ir))
       flags = {knmi_quality_control_fails  :logical_true(wvc_quality_flag and 2^9B),$
