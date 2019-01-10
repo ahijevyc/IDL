@@ -61,7 +61,7 @@ pro mpas_basin_rmse
       field = fields[ifield]
       ndim = n_elements(field)
       whatminuswhat = nmpass eq 1 ? mpass[0] : mpass[1]+'-'+mpass[0]
-      ofile = '/glade/p/work/ahijevyc/rmse_comparisons/'+$
+      ofile = '/glade/work/ahijevyc/rmse_comparisons/'+$
         strjoin(field,'_')+'_'+basin+'_basin_'+strjoin(mpass,'.')+(normalize_err ? '_normalized' : '') + '_'+year +'.png'
 
       ; Plot RMSE and RMSE difference on left side of page.

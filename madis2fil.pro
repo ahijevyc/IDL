@@ -4,7 +4,7 @@ function ok, x
   return, x lt 3e18 and x ne -9999.
 end
 pro madis2fil
-  basedir = '/glade/p/work/ahijevyc/mpex/surface/'
+  basedir = '/glade/work/ahijevyc/mpex/surface/'
   infile = basedir + '20130519_2000'
   hh = strmid(file_basename(infile),9,2)
   savfile = basedir + hh+'.sav'

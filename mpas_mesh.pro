@@ -6,7 +6,7 @@ function mpas_mesh, mpas_name, nomesh=nomesh, parent_id=parent_id
   parent_id_string = ''
   if keyword_set(parent_id) then parent_id_string = '.' + parent_id
   
-  savfile = '/glade/p/work/ahijevyc/mpas_plots/'+mpas_name+'/'+mpas_name+parent_id_string+'_mesh.sav'
+  savfile = '/glade/work/ahijevyc/mpas_plots/'+mpas_name+'/'+mpas_name+parent_id_string+'_mesh.sav'
   if file_test(savfile) ne 1 then begin
     print, "could not find "+savfile
     print, "run make_quickie, found in this file"
@@ -127,7 +127,7 @@ pro make_quickie
 
     endelse
     
-    savfile = '/glade/p/work/ahijevyc/mpas_plots/'+mpas_name+'/'+mpas_name+'.'+$
+    savfile = '/glade/work/ahijevyc/mpas_plots/'+mpas_name+'/'+mpas_name+'.'+$
       strjoin(parent_id,'.')+'_mesh.sav'
     mpas = {name:mpas_name, lonCell:lonCell, latCell:latCell, $
       nEdgesOnCell:nEdgesOnCell, cellsOnCell:cellsOnCell, areaCell:areaCell, $

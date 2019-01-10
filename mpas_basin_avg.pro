@@ -104,7 +104,7 @@ pro mpas_basin_avg
           new_xrange = p.xrange
           new_xrange[1] = new_xrange[1]-ndays
           p.xrange = new_xrange
-          ofile = '/glade/p/work/ahijevyc/mpas_plots/'+mpas.name+'/'+strjoin(field,'_')+'_'+mpas.name+'_mesh_'+region+'_'+year +'.png'
+          ofile = '/glade/work/ahijevyc/mpas_plots/'+mpas.name+'/'+strjoin(field,'_')+'_'+mpas.name+'_mesh_'+region+'_'+year +'.png'
           if debug eq 0 then begin
             p.window.save, ofile, resolution=175
             p.window.close
