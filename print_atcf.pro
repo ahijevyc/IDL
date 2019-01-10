@@ -9,14 +9,14 @@ pro print_atcf, atcf, atcf_file_in, best_model_track, debug=debug
   basin = strmid(atcf_file,1,2)
   CY = strmid(atcf_file,3,2)
   ; round forecast hour fh or else 0.99999 will be printed as 0.
-  fh = round((best_model_track.times - best_model_track.init_time)*24)
+  fh = round((best_model_track.valid_time - best_model_track.init_time)*24)
   init_date = best_model_track.init_date
   meters_per_second2knots = 1/!ATMOS.KTS2MPS
   km2nm = 0.539957
   mpas = mpas_mesh(best_model_track.model_name)
 
-  for itime = 0, n_elements(best_model_track.times)-1 do begin
-    if not finite(best_model_track.times[itime]) then continue
+  for itime = 0, n_elements(best_model_track.valid_time)-1 do begin
+    if not finite(best_model_track.valid_time[itime]) then continue
 
     lon = best_model_track.lon[itime]
     lat = best_model_track.lat[itime]
@@ -59,11 +59,14 @@ pro print_atcf, atcf, atcf_file_in, best_model_track, debug=debug
     endif
     RMW       =  round(best_model_track.maxr_s10m[itime] * km2nm)
 
-    userdefined='gfdl_warmcore_only ddZ rain'
+    ; Default userdefined string, depth, initials, direction, and speed of movement
+    userdefined='min_warmcore_fract ddZ rain'
     dT850 = 0 & dT500 = 0 & dT200 = 0 & ddZ850200 = 0 & rainc = 0 & rainnc = 0
     depth='X' ; X-unknown
+    initials = 'DAA'
     dir = 0
     speed = 0
+    
     stormname = CY eq 'XX' ? CY : best_model_track.stormname
     mybasin = atcf_basin(lon, lat, subregion=subregion) ; subregion used in atcf line
 
@@ -75,10 +78,11 @@ pro print_atcf, atcf, atcf_file_in, best_model_track, debug=debug
     thresh_stuff = "  34, NEQ" + string(NE34, SE34, SW34, NW34,format='(4(", ", i4))')
 
     atcf_end =  ',    0,    0, ' + string(RMW, format='(i3,", ")') + '  0,   0, ' + $
-      string(subregion, format='(A3)') + ',   0, DAA, ' + $
+      string(subregion, format='(A3)') + ',   0, ' + $
+      string(initials, format='(A3)')  + ', ' + $
       string(dir, speed, stormname, format='(I3,", ",I3,", ",A10,", ")') + $
       depth + ',   , NEQ,    0,    0,    0,    0, ' + $
-      string(userdefined, best_model_track.GFDL_warmcore_only, dT500, dT200, $
+      string(userdefined, best_model_track.min_warmcore_fract, dT500, dT200, $
       ddZ850200, rainc, rainnc, strcompress(strjoin(best_model_track.id,'/'),/remove_all), $
       format='(A20,", ",F5.2,", ",F5.2,", ",F5.2,", ",F7.2,", ",F7.2,", ",F7.2,", ",A,", ")')
 
