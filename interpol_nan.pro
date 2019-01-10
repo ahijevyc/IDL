@@ -1,4 +1,9 @@
-function interpol_NAN, v_in, x_in, u_in, max_gap=max_gap
+function interpol_NAN, v_in, x_in, u_in, max_gap=max_gap, circle=circle
+
+  ; given x and v=f(x), estimate v at arbitrary x values (given by u), using linear interpolation.
+  
+  ; if circle keyword is set, assume values are angles in degrees and average appropriately
+
   v = v_in
   x = x_in
   u = u_in
@@ -14,12 +19,21 @@ function interpol_NAN, v_in, x_in, u_in, max_gap=max_gap
   ; Only use finite points at finite levels
   x = x[igood]
   v = v[igood]
-  
-  
+    
   ; do the magic
+  
   s = VALUE_LOCATE(x, u) > 0L < (m-2) ;Subscript intervals.
   p = (u-x[s])*(v[s+1]-v[s])/(x[s+1] - x[s]) + v[s]
-  p = float(p)
+  
+  if keyword_set(circle) then begin
+    sinv = sin(v*!DTOR)
+    cosv = cos(v*!DTOR)
+    sinp = (u-x[s])*(sinv[s+1]-sinv[s])/(x[s+1] - x[s]) + sinv[s]
+    cosp = (u-x[s])*(cosv[s+1]-cosv[s])/(x[s+1] - x[s]) + cosv[s]
+    p = atan(sinp, cosp) * !RADEG
+  endif
+
+  p = float(p)  
   
   if keyword_set(max_gap) then begin
     ; This could be a major change - Oct 7 2013
@@ -37,18 +51,26 @@ function interpol_NAN, v_in, x_in, u_in, max_gap=max_gap
   endif
   
   
-  ; if it is out of range of x?
+  ; Are any of the new, arbitrary, requested levels (u) outside the range of given levels x?
   iout_of_range = where(u lt min(x) or u gt max(x), nout_of_range, ncomplement=n_in_range, complement=in_range)
+  ; If so set them to NaN.
   if nout_of_range gt 0 then p[iout_of_range] = !VALUES.F_NAN
   
   ; what if the requested location is already in x?
-  if n_in_range gt 0 then begin
-    for i_in_range = 0L, n_in_range-1 do begin
-      iu = in_range[i_in_range]
+  ; loop thru requested levels (inside the range of given levels x)
+  foreach iu, in_range do begin
       iexact = where(x eq u[iu], nexact)
-      if nexact gt 0 then p[iu] = v[iexact]
-    endfor
-  endif
+      ; sometimes a given level x is repeated.  Make sure its value (v) is repeated too. 
+      if nexact eq 1 then p[iu] = v[iexact]
+      if nexact gt 1 then begin
+        ; If any of the v values in v[iexact] are not the same as the first value, then stop.
+        if total(v[iexact] ne v[iexact[0]]) gt 0 then begin
+          print, 'multiple v values assigned to same x value:', x[iexact], v[iexact]
+          stop
+        endif
+        p[iu] = v[iexact[0]]
+      endif
+  endforeach
   
   
   ;  for ij = 0, n_elements(js)-1 do begin
