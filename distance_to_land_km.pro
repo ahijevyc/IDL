@@ -6,7 +6,7 @@ function distance_to_land_km, inlons, inlats
   if n_elements(get_lats) ne n then stop
   dland = replicate(!VALUES.D_NAN, n)
   
-  dland_file = '/glade/p/work/ahijevyc/bin/6m.nc'
+  dland_file = '/glade/work/ahijevyc/bin/6m.nc'
   ncid = ncdf_open(dland_file)
   did = ncdf_varid(ncid, 'dland')
   ncdf_varget, ncid, did, dland

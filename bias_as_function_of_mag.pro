@@ -88,7 +88,7 @@ pro bias_as_function_of_mag
   m1 = mapcontinents(fill_color='beige', /continents)
   basin_outline = plot(px, py, fill_color=color, overplot=map, fill_background=1, transparency=25)
 
-  ofile = "/glade/p/work/ahijevyc/mpas_plots/"+model.name+"/"+varname+"_condition_on_"+condition_on+$
+  ofile = "/glade/work/ahijevyc/mpas_plots/"+model.name+"/"+varname+"_condition_on_"+condition_on+$
     "_day"+string(lead_time,format='(I2.2)')+"_"+idl_validname(region,/convert_spaces)+".png"
   b.window.save, ofile, resolution=180
   print, "created "+ofile
