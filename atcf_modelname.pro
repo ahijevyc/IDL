@@ -22,6 +22,7 @@ function atcf_modelname, inname
       '4km': model = 'MPAS'
       'uni': model = 'MPAS'
       'hwt2017': model = 'MPAS'
+      'ECMWF': model = 'ECMF'
       else : stop
     endcase
     out[i] = model
