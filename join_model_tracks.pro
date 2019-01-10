@@ -11,7 +11,7 @@ function join_model_tracks, model_tracks, observed_times_in
 
   ; join the model_tracks from tip to tail and interpolate to observed_times
   
-  ; Make sure tracks_file, init_time, init_date, model_name, bdeck_file, stormname, min_duration_days, and GFDL_warmcore_only
+  ; Make sure tracks_file, init_time, init_date, model_name, bdeck_file, stormname, min_duration_days, and min_warmcore_fract
   ; match for all model_tracks.
   ; removed "specs" keyword Oct 2015
   model_track0 = model_tracks[0]
@@ -24,13 +24,13 @@ function join_model_tracks, model_tracks, observed_times_in
     if model_track.bdeck_file ne model_track0.bdeck_file then stop
     if model_track.stormname ne model_track0.stormname then stop
     if model_track.min_duration_days ne model_track0.min_duration_days then stop
-    if model_track.GFDL_warmcore_only ne model_track0.GFDL_warmcore_only then stop
+    if model_track.min_warmcore_fract ne model_track0.min_warmcore_fract then stop
   endfor
   
   itrack  = !NULL
   lons  = !NULL
   lats  = !NULL
-  times = !NULL
+  valid_times = !NULL
   intensity = !NULL
   id = !NULL
   for imodel_track=0,model_tracks.count()-1 do begin
@@ -39,31 +39,37 @@ function join_model_tracks, model_tracks, observed_times_in
     itrack = [itrack, model_track.itrack]
     lons = [lons, model_track.lon]
     lats = [lats, model_track.lat]
-    times = [times, model_track.times]
+    valid_times = [valid_times, model_track.valid_time]
     intensity = [intensity, model_track.intensity]
     id = [id, model_track.id]
   endfor
 
   
   ; interpolate to observed_times that are within the total track time window
-  observed_times = observed_times[where(observed_times ge min(times) and observed_times le max(times))]
-  ; re-included original times Aug 11 , 2014. Important not to forget times for which the 
+  observed_times = observed_times[where(observed_times ge min(valid_times) and observed_times le max(valid_times))]
+  ; re-included original valid_times Aug 11 , 2014. Important not to forget valid_times for which the 
   ; wind speed may reach tropical storm strength in the tropics but the time isn't an "OBSERVED" best track
   ; time.  Like HUMBERTO AL09 for GFS004 initialized 20130916.  It does reach TS strength in the tropics
   ; but not on a multiple of 6 hours.  
-  all_times = [times, observed_times]
-  all_times = all_times[uniq(all_times,sort(all_times))]
-  lons       = interpol_nan(     lons, times, all_times)
-  lats       = interpol_nan(     lats, times, all_times)
-  intensity  = interpol_nan(intensity, times, all_times)
+  all_valid_times = [valid_times, observed_times]
+  all_valid_times = all_valid_times[uniq(all_valid_times,sort(all_valid_times))]
+  
+  ; Must be careful with longitude. If you cross the dateline, interpol_nan may not work.
+  old_lons   = interpol_nan(     lons, valid_times, all_valid_times)
+  lons       = interpol_nan(     lons, valid_times, all_valid_times, /circle)
+  if not array_equal(old_lons, lons) then begin
+    print, 'after fixing longitude interpolation, they changed', old_lons, lons
+  endif
+  lats       = interpol_nan(     lats, valid_times, all_valid_times)
+  intensity  = interpol_nan(intensity, valid_times, all_valid_times)
 
   
 
 
   model_track = {itrack:itrack, tracks_file:model_track0.tracks_file, init_time:model_track0.init_time, init_date:model_track0.init_date, $
-    lon:lons, lat:lats, times:all_times, intensity:intensity, model_name:model_track0.model_name, bdeck_file:model_track0.bdeck_file, $
+    lon:lons, lat:lats, valid_time:all_valid_times, intensity:intensity, model_name:model_track0.model_name, bdeck_file:model_track0.bdeck_file, $
     stormname:model_track0.stormname, min_duration_days:model_track0.min_duration_days, $
-    GFDL_warmcore_only:model_track0.GFDL_warmcore_only, id:id}
+    min_warmcore_fract:model_track0.min_warmcore_fract, id:id}
     
     
     
