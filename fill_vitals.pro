@@ -6,7 +6,7 @@ end
 
 
 pro fill_vitals, mpas, iCells, init_date, valid_time, vitals, vital_itimes, model_file=model_file, $
-  model_basedirs, ignore_parent_id=ignore_parent_id
+  model_basedirs, ignore_parent_id=ignore_parent_id, debug=debug, lon0=lon0, lat0=lat0
   ; INPUT
   ; mpas - Output from mpas_mesh('mpas_xx') function. Information about model grid.
   ;   A structure with tags like .latCell, .areaCell, etc.
@@ -32,7 +32,9 @@ pro fill_vitals, mpas, iCells, init_date, valid_time, vitals, vital_itimes, mode
   ; ignore_parent_id - The default is to stop if the parent_id of the diagnostics file doesn't contain
   ; the parent_id of the init.nc from which the lats and lons were taken. If this is set, don't stop.
 
-
+  if ~keyword_set(debug) then debug=0
+  
+  if debug then print, 'fill_vitals:', lon0[0], lat0[0]
 
   if n_elements(ignore_parent_id) eq 0 then ignore_parent_id=0
 
@@ -85,10 +87,11 @@ pro fill_vitals, mpas, iCells, init_date, valid_time, vitals, vital_itimes, mode
   ; First find the greatest range.
   greatest_range = greatest_vital_range(vitals)
   ; Make a list of neighbor arrays for the greatest range.
-  if n_elements(mpas.LONCELL) gt 1100000 then print, "Finding neighbors ",strtrim(greatest_range,2)," km from cell", iCells
+  if n_elements(mpas.LONCELL) gt 1100000 then print, "Finding neighbors ",strtrim(greatest_range,2)," km from", lon0[0], lat0[0]
   iCell_neighbors = list()
   if greatest_range gt 0 then for iCell = 0, n_elements(iCells)-1 do iCell_neighbors.add, $
-    mpas_neighbors(iCells[iCell],mpas.lonCell,mpas.latCell,mpas.nEdgesOnCell,mpas.cellsOnCell, range=greatest_range)
+    mpas_neighbors(iCells[iCell],mpas.lonCell,mpas.latCell,mpas.nEdgesOnCell,mpas.cellsOnCell, $
+    range=greatest_range, lon0=lon0[iCell], lat0=lat0[iCell])
   ncid = NCDF_OPEN(model_file)
   print, "fill_vitals: opened "+model_file
 
@@ -140,7 +143,7 @@ pro fill_vitals, mpas, iCells, init_date, valid_time, vitals, vital_itimes, mode
         case 1 OF
           (op eq 'max')  : vitals.(ifield).data[vital_itimes[iCell]] = max(data[ineighbors.iCell])
           (op eq 'min')  : vitals.(ifield).data[vital_itimes[iCell]] = min(data[ineighbors.iCell])
-          ; could mean be weighted by inverse distance? -nyeh.
+          ; could mean be weighted by inverse distance? -nah.
           (op eq 'mean') : vitals.(ifield).data[vital_itimes[iCell]] = $
             total(data[ineighbors.iCell] * mpas.areaCell[ineighbors.iCell]) / total(mpas.areaCell[ineighbors.iCell])
           (op eq 'maxr') :  begin
@@ -159,7 +162,12 @@ pro fill_vitals, mpas, iCells, init_date, valid_time, vitals, vital_itimes, mode
                 'NW' : ineighbors = ineighbors[where(ineighbors.az ge  -90. and ineighbors.az lt   0., /null)]
                 else: stop
               endcase
-              if n_elements(ineighbors) gt 0 then vitals.(ifield).data[vital_itimes[iCell]] = max(ineighbors.range)
+              n_in_quadrant = n_elements(ineighbors)
+              if n_in_quadrant gt 0 then begin
+                max_dist = max(ineighbors.range, imax_dist)
+                if debug then print, op, n_in_quadrant, max_dist*1000./3600./!ATMOS.kts2mps, (ineighbors.az[0])[imax_dist]
+                vitals.(ifield).data[vital_itimes[iCell]] = max_dist
+              endif
             endif
           end
           else : stop
