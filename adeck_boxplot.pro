@@ -2,8 +2,8 @@ pro ADECK_boxplot
   ; used to make original boxplot for MPAS TC paper. But wanted to change to maximum vmax along the track
   ; instead of vmax for each 6-h forecast period. So instead of a pair for each matched forecast time, a
   ; single pair for each forecast track/observed track.
-  ;basedir = '/glade/p/work/ahijevyc/METv4.1/out/2014/'
-  basedir = '/glade/p/work/ahijevyc/met-5.2/out/2014/'
+  ;basedir = '/glade/work/ahijevyc/METv4.1/out/2014/'
+  basedir = '/glade/work/ahijevyc/met-5.2/out/2014/'
   year = file_basename(basedir)
   if year eq 2014 then models = ['MPS4','GFSO']
   if year eq 2016 then models = ['MPS4','GFSO']
@@ -44,8 +44,8 @@ pro ADECK_boxplot
     ytitle=model_str+" Intensity (knots)"
     xtitle='Observed Intensity (knots)'
     if max_vmax_comparison then begin
-      ; from /glade/p/work/ahijevyc/METv4.1/max_vmax_comparison
-      t = read_max_vmax_comparison('/glade/p/work/ahijevyc/METv4.1/t')
+      ; from /glade/work/ahijevyc/METv4.1/max_vmax_comparison
+      t = read_max_vmax_comparison('/glade/work/ahijevyc/METv4.1/t')
       xtitle='Observed Maximum Wind Along Track (knots)'
       ytitle=model+" Maximum Wind Along Track (knots)"
     endif
