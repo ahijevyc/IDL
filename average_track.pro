@@ -11,9 +11,11 @@ pro average_track
   basin = 'WP'
   cy = 12
   dt = 6
-  files = '/glade/p/work/ahijevyc/GFS/Lionrock/AP'+members.ids+'.'+initdate+'.adeck'
-  lonsum = replicate(!VALUES.F_NAN, 240/dt+1, files.length)
-  latsum = replicate(!VALUES.F_NAN, 240/dt+1, files.length)
+  files = '/glade/work/ahijevyc/GFS/Lionrock/AP'+members.ids+'.'+initdate+'.adeck'
+  ; need to average longitude differently
+  sinlon  = replicate(!VALUES.F_NAN, 240/dt+1, files.length)
+  coslon  = replicate(!VALUES.F_NAN, 240/dt+1, files.length)
+  latsum  = replicate(!VALUES.F_NAN, 240/dt+1, files.length)
   vmaxsum = replicate(!VALUES.F_NAN, 240/dt+1, files.length)
   mslpsum = replicate(!VALUES.F_NAN, 240/dt+1, files.length)
   rad1sum = replicate(!VALUES.F_NAN, 240/dt+1, files.length)
@@ -27,11 +29,12 @@ pro average_track
     if total(t.cy ne cy) then stop
     if total(t.rad ne 34) then stop
     if total(t.windcode ne 'NEQ') then stop
-    for itime = 0, t.julday.length-1 do begin
-      fhr = 24d*(t.julday[itime] - initjday)
+    for itime = 0, t.valid_time.length-1 do begin
+      fhr = 24d*(t.valid_time[itime] - initjday)
       it = fhr/dt
       if long(it) ne it then stop ; no decimals
-      lonsum[it,ifile] = t.lon[itime]
+      sinlon[it,ifile] = sin(t.lon[itime]*!DTOR)
+      coslon[it,ifile] = cos(t.lon[itime]*!DTOR)
       latsum[it,ifile] = t.lat[itime]
       vmaxsum[it,ifile] = t.vmax[itime]
       mslpsum[it,ifile] = t.mslp[itime]
@@ -41,7 +44,7 @@ pro average_track
       rad4sum[it,ifile] = t.rad4[itime]
     endfor
   endfor
-  lons = mean(lonsum, /nan, dimension=2)
+  lons = !RADEG*atan(total(sinlon, 2, /nan), total(coslon, 2, /nan)) ; mean of circular distance 0-360 like azimuth
   lats = mean(latsum, /nan, dimension=2)
   vmaxs = mean(vmaxsum, /nan, dimension=2)
   mslps = mean(mslpsum, /nan, dimension=2)
