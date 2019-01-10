@@ -1,7 +1,7 @@
 function matches_a_best_track, track, best_track=best_track
   best_track = {adeck_file_name:'?',maxw:!VALUES.D_NAN} ; initialize to nothing
   ; if you find this track in the adeck files it is matched to an observed best track.
-  ; All files in the adeck list were created by find_matching_model_track.pro. 
+  ; All files in the adeck list were created by find_matching_model_track.pro.
   ; They are the closest model matches to each bdeck best track.
   ;
 
@@ -9,9 +9,9 @@ function matches_a_best_track, track, best_track=best_track
   ; Returns 0 otherwise (it may be considered a false alarm, depending on the criteria for false alarms).
 
   tracks_file = track.tracks_file
-  
-  suffix='_origmesh' + (track.origmesh?'True':'False') + string(track.min_duration_days, $
-    format='("_",F3.1,"d_minimum")')+(track.gfdl_warmcore_only?"_GFDL_warmcore_only":"")
+
+  suffix='_origmesh' + (track.origmesh?'True':'False') + string(track.min_duration_days,track.min_warmcore_fract, $
+    format='("_",F3.1,"d_minimum.min_warmcore_fract",F4.2)')
 
   if strmatch(tracks_file, '*/gfdl_tracker/*') then begin
     trackername='gfdl'
@@ -22,13 +22,13 @@ function matches_a_best_track, track, best_track=best_track
   if strmatch(tracks_file, '*/latlon_0*/*') then suffix= strmid(tracks_file,strpos(tracks_file,'latlon_')+6,15)+suffix
   if strmatch(tracks_file, '*_tracks.sav') then suffix = strmid(file_basename(tracks_file, '_tracks.sav'),2,/rev)
 
-  basedir = '/glade/p/work/ahijevyc/tracking_'+trackername+'/adeck/'
+  basedir = '/glade/work/ahijevyc/tracking_'+trackername+'/adeck/'
 
   yyyy = strmid(track.init_date,0,4)
 
-  ; If trackertype is 'tracker' there should not be any false alarms. All model tracks should be 
-  ; matched to a best track.  But I have made code flexible enough to run on 'tracker' mode 
-  ; output. 
+  ; If trackertype is 'tracker' there should not be any false alarms. All model tracks should be
+  ; matched to a best track.  But I have made code flexible enough to run on 'tracker' mode
+  ; output.
   ;
   searchstr = basedir+track.model_name+'/'+track.trackertype+'/a*'+yyyy+'*'+suffix
   adeck_files = file_search(searchstr, count=nfiles)
@@ -48,8 +48,8 @@ function matches_a_best_track, track, best_track=best_track
       stop
     endif
     if file_test(adeck_file, /zero) then continue ; skip if zero size
-    ; choose GFDL_warmcore_only=0 because a-decks don't have a warm core column.
-    adeck = read_atcf(adeck_file, GFDL_warmcore_only=0) ; adeck atcf in knots and nautical miles
+    ; choose min_warmcore_fract=0 because a-decks don't have a warm core column.
+    adeck = read_atcf(adeck_file) ; adeck atcf in knots and nautical miles
     ii = where(adeck.init_yyyymmddhh eq track.init_date,/null)
     if ii eq !NULL then continue
     trackids = adeck.userdefined7[ii]
@@ -57,9 +57,8 @@ function matches_a_best_track, track, best_track=best_track
     trackids = strsplit(trackids[0],'/', /extr) ; could be a composite track, which is separated by slashes.
     ihits = where(trackids eq track.id, /null)
     if ihits ne !NULL then begin
-      bdeck_file = '/glade/p/work/ahijevyc/atcf/b'+strmid(file_basename(adeck_file),1,8)+'.dat'
-      ; choose GFDL_warmcore_only=0 because a-decks don't have a warm core column.
-      bdeck = read_atcf(bdeck_file, gfdl_warmcore_only=0)
+      bdeck_file = '/glade/work/ahijevyc/atcf/b'+strmid(file_basename(adeck_file),1,8)+'.dat'
+      bdeck = read_atcf(bdeck_file)
       best_track = {adeck_file_name:file_basename(adeck_file),maxw:max(bdeck.vmax)*!ATMOS.kts2mps}
       return, 1
     endif
@@ -72,7 +71,7 @@ end
 pro get_all_model_vitals, model_name=model_name, date=date, trackername=trackername, $
   smooth_radius=smooth_radius, fcst_hr_hist=fcst_hr_hist, hist_vital=hist_vital, $
   trk_color=trk_color, basin=basin, ofile=ofile, $
-  min_duration_days=min_duration_days, debug=debug, gfdl_warmcore_only=gfdl_warmcore_only,$ 
+  min_duration_days=min_duration_days, debug=debug, min_warmcore_fract=min_warmcore_fract,$
   vmax_thresh_kt=vmax_thresh_kt, trackertype=trackertype
 
   ; Get Vitals for all model tracks in a single model run.
@@ -80,7 +79,7 @@ pro get_all_model_vitals, model_name=model_name, date=date, trackername=trackern
   ; Operating on all matching model tracks at once was another possibility.
   ; This last way could save I/O due to shared times among tracks, but it is broken.
 
-  if ~keyword_set(model_name) then model_name = 'ep'
+  if ~keyword_set(model_name) then model_name = 'uni'
   if ~keyword_set(date) then date = '2015080500'
   basedir = '/glade/p/nmmm0024/'+model_name+'/'+date+'/'
   if strmatch(model_name, 'GFS*') then basedir = '/glade/scratch/ahijevyc/'+model_name+'/'+date+'/'
@@ -93,7 +92,7 @@ pro get_all_model_vitals, model_name=model_name, date=date, trackername=trackern
   if ~keyword_set(vmax_thresh_kt) then vmax_thresh_kt = 34.
   if ~keyword_set(trackertype) then trackertype = 'tcgen'
   if ~keyword_set(ofile) then ofile = ''
-  if n_elements(GFDL_warmcore_only) eq 0 then GFDL_warmcore_only = 1
+  if n_elements(min_warmcore_fract) eq 0 then min_warmcore_fract = 0.25
 
   atmos_const
   dxdetails = trackername eq 'gfdl' && model_name eq 'GFS' ? '*' : string(0.5,smooth_radius,format='("_",F5.3,"deg_",I3.3,"km")')
@@ -119,7 +118,7 @@ pro get_all_model_vitals, model_name=model_name, date=date, trackername=trackern
   ; Skip if false alarm file exists and is modified later than model tracks file.
   if file_test(false_alarms_file) eq 0 || $
     (file_info(false_alarms_file)).mtime le (file_info(model_tracks_files[0])).mtime then begin
-    openw, fa_lun, false_alarms_file, /get_lun
+    openw, fa_lun, false_alarms_file+'.tmp', /get_lun
   endif else begin
     print, basin+" basin false alarms file exists, newer than "+model_tracks_files[0]+" skipping."
     print, 'false alarms file: '+ false_alarms_file
@@ -128,8 +127,8 @@ pro get_all_model_vitals, model_name=model_name, date=date, trackername=trackern
 
   ; If using GFDL tracker, don't use IDL save file; just read gfdl output ATCF fort.66 file
   if trackername eq 'gfdl' then begin
-    gfdl_m = read_atcf(model_tracks_file, lats=mcv_lats, lons=mcv_lons, times=mcv_times, intensity=mcv_intensity, $
-      id=mcv_id, gfdl_warmcore_only=gfdl_warmcore_only)
+    gfdl_m = read_atcf(model_tracks_file, lats=mcv_lats, lons=mcv_lons, valid_time=mcv_times, intensity=mcv_intensity, $
+      id=mcv_id)
     init_time = julday(strmid(date,4,2),strmid(date,6,2),strmid(date,0,4),strmid(date,8,2),0,0)
     specs = {tracker:'gfdl'}
   endif else restore, model_tracks_file ; get mcv_lats, mcv_lons, mcv_times, init_time, etc. from my tracking method.
@@ -145,25 +144,40 @@ pro get_all_model_vitals, model_name=model_name, date=date, trackername=trackern
   model_tracks = list()
   ntrack = total(finite(mcv_times[*,0]))
 
-  ; Filter out tracks in extratropics, SH, insufficient duration, or over land.
+  ; Filter out tracks in extratropics, SH, insufficient duration, over land, or in wrong basin
   for itrack=0,ntrack-1 do begin
+    last_itime = max(where(finite(mcv_times[itrack,*]),/null))
+    lons      = reform(     mcv_lons[itrack,0:last_itime])
+    lats      = reform(     mcv_lats[itrack,0:last_itime])
+    intensity = reform(mcv_intensity[itrack,0:last_itime])
+
     ; is track between +/- 30 latitude at some point?
-    itropics = where(abs(mcv_lats[itrack,*]) lt in_tropics, /null)
+    itropics = where(abs(lats) lt in_tropics, /null)
     if itropics eq !NULL then begin
       if debug then print, date, ' track ',mcv_id[itrack],' never in tropics'
       continue
     endif
-    if max(mcv_lats[itrack,*]) lt 0 then begin
+    if max(lats) lt 0 then begin
       if debug then print, date, ' track ',mcv_id[itrack],' never in Northern Hemisphere'
       continue ; ignore southern hemisphere (for now)
     endif
-    last_itime = max(where(finite(mcv_times[itrack,*]),/null))
     tduration = mcv_times[itrack,last_itime]-mcv_times[itrack,0]
     if tduration lt min_duration_days then begin
       if debug then print, date, ' track ',mcv_id[itrack],' lasted only',string(tduration,format='(F6.2)'), ' days'
       continue
     endif
-    dland = distance_to_land_km(mcv_lons[itrack,0:last_itime],mcv_lats[itrack,0:last_itime])
+    
+    ; Requre min_warmcore_fract warm core times for this track to count.
+    nwarmcore = total(gfdl_m.twod.warmcore[itrack,*] eq 'Y')
+    fract_warmcore = nwarmcore/n_elements(mcv_times[itrack,*])
+    if debug then print, mcv_id[itrack], nwarmcore, fract_warmcore, format='(A," found ",I0," warm core times. (",F4.2,")")'
+    if nwarmcore lt min_warmcore_fract then begin
+      print, mcv_id[itrack], min_warmcore_fract, fract_warmcore, format='(A,I0," warm core time required. Found only ",I0,".")'
+      continue
+    endif
+
+
+    dland = distance_to_land_km(lons,lats)
     iocean = where(dland gt 0, /null)
     if iocean eq !NULL then begin
       if debug then print, date, ' entire track ',mcv_id[itrack],' over land'
@@ -173,16 +187,26 @@ pro get_all_model_vitals, model_name=model_name, date=date, trackername=trackern
     ; on 23 mar 2014 I checked all the matching track segments and wrote down the maximum intensity of each one
     ; for mpas, mpas_al, mpas_wp, and GFS, the lowest "maximum" was 5.01e-05.  So if I require
     ; the maximum intensity to be greater than 5e-05 I will eliminate a bunch of weak systems objectively, but not throw out any matches.
-    if max(mcv_intensity[itrack,*]) le 5e-05 then begin
-      if debug then print, itrack, 'not intense', max(mcv_intensity[itrack,*])
+    if max(intensity) le 5e-05 then begin
+      if debug then print, itrack, 'not intense', max(intensity)
       continue
     endif
 
+    ; If found-on-fly (FOF) get basin based on official navy domains
+    ;      if strmid(track.id, 2, /reverse) eq 'FOF' then begin
+    mean_lon = atan( mean(sin(!DTOR*lons)), mean(cos(!DTOR*lons)) )*!RADEG
+    mybasin = atcf_basin(mean_lon, mean(lats), subregion=subregion)
+    if strmatch(mybasin, basin, /fold) eq 0 then begin
+      ; if it isnt in the requested basin skip this track
+      print, 'skipping '+mcv_id[itrack]+'. '+mybasin+' not '+basin
+      continue
+    endif
+
+
     model_tracks.add, {itrack:itrack, tracks_file:model_tracks_file, init_time:init_time, init_date:date, $
-      lon:  reform( mcv_lons[itrack,0:last_itime]),       lat:     reform(mcv_lats[itrack,0:last_itime]), $
-      times:reform(mcv_times[itrack,0:last_itime]), intensity:reform(mcv_intensity[itrack,0:last_itime]), $
+      lon:lons, lat:lats, valid_time:reform(mcv_times[itrack,0:last_itime]), intensity:intensity, $
       specs:specs, model_name:mpas.name, min_duration_days:min_duration_days, in_tropics:in_tropics, $
-      id:mcv_id[itrack], gfdl_warmcore_only:gfdl_warmcore_only, trackertype:trackertype}
+      id:mcv_id[itrack], min_warmcore_fract:min_warmcore_fract, trackertype:trackertype}
 
     ;    for iseg = 0, n_elements(model_tracks[-1].lat)-2 do $
     ;    oplot, model_tracks[-1].lon[iseg:iseg+1], model_tracks[-1].lat[iseg:iseg+1], $
@@ -199,35 +223,15 @@ pro get_all_model_vitals, model_name=model_name, date=date, trackername=trackern
   ; This forces vitals to be drawn from the MPAS diagnostics mesh (not the fort.66 file).
   origmesh = 1 ; should be 1 for MPAS (temporarily 0 for comparing numbers from smooth grid)
   if strmatch(mpas.name,'GFS*') then origmesh = 0
+
+
+  
   model_tracks = add_vitals(model_tracks, mpas, origmesh = origmesh)
   ; vmax will be in m/s.  It is returned as knots by read_atcf() but add_vitals converts it to m/s.
 
-  ; Filter by basin and max wind attained in tropics
+  ; Filter by basin, max wind attained in tropics, and warmcore fraction-of-time
   for itrack=0,model_tracks.count()-1 do begin
     track = model_tracks[itrack]
-
-    ; if it isnt in the requested basin skip this track
-    if keyword_set(basin) then begin
-      ; If found-on-fly (FOF) get basin based on official navy domains
-      ;      if strmid(track.id, 2, /reverse) eq 'FOF' then begin
-      mean_lon = atan(mean(sin(!DTOR*track.lon)), mean(cos(!DTOR*track.lon)))*!RADEG
-      mybasin = atcf_basin(mean_lon, mean(track.lat), subregion=subregion)
-      ;      endif else begin
-      ;        ; otherwise use basin found in first-guess file (fort.12)
-      ;        case strmid(track.id, 0, /reverse) of
-      ;          'L': mybasin = 'AL'
-      ;          'W': mybasin = 'WP'
-      ;          'E': mybasin = 'EP'
-      ;          'C': mybasin = 'CP'
-      ;          'I': mybasin = 'IO'
-      ;        else: stop
-      ;        endcase
-      ;      endelse
-      if strmatch(mybasin, basin, /fold) eq 0 then begin
-        if debug then print, 'skipping '+track.id+' '+mybasin+' not '+basin
-        continue
-      endif
-    endif
 
     ; Does max wind get to TS strength somewhere in the tropics?
     iTS = where(track.max_spd10m ge vmax_thresh_kt * !ATMOS.kts2mps and abs(track.lat) lt 30., /null)
@@ -250,7 +254,7 @@ pro get_all_model_vitals, model_name=model_name, date=date, trackername=trackern
     ; track extends way west of the end of Henriette's best track into the WP.
     ; So much so, that the model track centroid is WP. Another case is Odile EP152014. It
     ; starts in the Gulf of California and tracks to Michigan, so it is counted as AL here
-    ; and EP in tc_stat.  
+    ; and EP in tc_stat.
     ; This isn't an issue for false alarms, which don't have a corresponding
     ; best track to disagree with.
     ;
@@ -259,8 +263,8 @@ pro get_all_model_vitals, model_name=model_name, date=date, trackername=trackern
     ; the overlap is on a time boundary.
     ;
 
-    ; Originally write false alarm track to a file for COSMIC radio occultation/GFS study 
-    ; (Chris's contact). But now, also for TC verification paper. 
+    ; Originally write false alarm track to a file for COSMIC radio occultation/GFS study
+    ; (Chris's contact). But now, also for TC verification paper.
     if row eq farow then begin
       if debug then print, 'false alarm: '+track.id
       print_atcf, fa_lun, 'a'+mybasin+'XX', track
@@ -283,7 +287,7 @@ pro get_all_model_vitals, model_name=model_name, date=date, trackername=trackern
     ; Only count forecast hours when the track vmax >= vmax_thresh_kt.
     ; Again this is only good for false alarms. The official hit count is different.
     iTS = where(track.max_spd10m ge vmax_thresh_kt * !ATMOS.kts2mps, /null) ; where is Vmax over the threshold (34kt TS or 64kt hurricane) strength?
-    fh = 24d*(track.times[iTS] - track.init_time)
+    fh = 24d*(track.valid_time[iTS] - track.init_time)
 
     if n_elements(fcst_hr_hist) gt 0 then begin
       input = fcst_hr_hist.data[row,*]
@@ -310,11 +314,13 @@ pro get_all_model_vitals, model_name=model_name, date=date, trackername=trackern
 
   endfor ; filter and classify each track
   free_lun, fa_lun
+  ; Remove .tmp from false alarm file, signifying the program is finished.
+  file_move, false_alarms_file+'.tmp', false_alarms_file
 
 end
 
 pro run_get_all_model_vitals, date=date, trackername=trackername, debug=debug, $
-  min_duration_days=min_duration_days, gfdl_warmcore_only=gfdl_warmcore_only, basins=basins, $
+  min_duration_days=min_duration_days, min_warmcore_fract=min_warmcore_fract, basins=basins, $
   models=models, year=year, trackertype=trackertype
   ; For a single date (date keyword) or a range, get vitals for all model tracks.
   ; Then plot hits and false alarms and histograms of a vitals variable (e.g. max_wind).
@@ -325,7 +331,7 @@ pro run_get_all_model_vitals, date=date, trackername=trackername, debug=debug, $
 
   if ~keyword_set(trackername) then trackername = 'gfdl'
   if ~arg_present(min_duration_days) then min_duration_days=1d
-  if ~keyword_set(year) then year = 2015
+  if ~keyword_set(year) then year = 2018
   if ~keyword_set(trackertype) then trackertype = 'tcgen'
   if n_elements(debug) eq 0 then debug = 0
 
@@ -350,17 +356,25 @@ pro run_get_all_model_vitals, date=date, trackername=trackername, debug=debug, $
       start_ymd = julday(6,29,year,0)
       final_ymd = julday(10,31,year,0)
     endif
+    if year eq 2017 then begin
+      start_ymd = julday(8,1,year,0)
+      final_ymd = julday(10,31,year,0)
+    endif
+    if year eq 2018 then begin
+      start_ymd = julday(6,1,year,0)
+      final_ymd = julday(10,31,year,0)
+    endif
   endelse
-  if debug then print, "requested date range ", string(start_ymd, final_ymd, format='(c())') 
-  
+  if debug then print, "requested date range ", string(start_ymd, final_ymd, format='(c())')
+
   ; Used to make this variable (64 or 34) but now we just use 34 and filter out the 64s later
   ; This has the effect of filtering out model tracks that don't ever reach TS strength.
   vmax_thresh_kt=34 ; [knots]
 
-  if ~keyword_set(gfdl_warmcore_only) then gfdl_warmcore_only = 1 ; start_ymd gt julday(1,1,2014)
+  if n_elements(min_warmcore_fract) eq 0 then min_warmcore_fract = 0.25 ; start_ymd gt julday(1,1,2014)
 
   ; models = ['mpas','mpas_al','mpas_wp','GFS'] ; 'mpas','mpas_al','mpas_wp','GFS'
-  if ~keyword_set(models) then models = ['GFS']
+  if ~keyword_set(models) then models = ['uni','GFS']
 
   for imodel = 0, n_elements(models)-1 do begin
     model_name = models[imodel]
@@ -380,20 +394,22 @@ pro run_get_all_model_vitals, date=date, trackername=trackername, debug=debug, $
     final_ymd = final_ymd < systime(/julian, /utc) ; no later than current time
     if debug then print, "final date range ", string(start_ymd, final_ymd, format='(c())')
     yyyymmddhh = string(timegen(start=start_ymd, final=final_ymd, step=model_name eq 'GFS' ? 0.25 : 1), format='(C(CYI4.4,CMoI2.2,CDI2.2,CHI2.2))')
-    if ~keyword_set(basins) then basins = ['EP','AL','WP']
+    if ~keyword_set(basins) then basins = ['WP','AL','EP']
     nbasin=n_elements(basins)
     ; changed model_name to 'observed' temporarily. June 21 2015.
     model_or_observed = model_name + '_vmax.ge.' + string(round(vmax_thresh_kt),format='(I2)') + 'kt.observed';+model_name;  + model_name ; 'observed' or model_name
     for b = 0,nbasin-1 do begin
       basin = basins[b]
-      ofile = '/glade/p/work/ahijevyc/tracking_'+trackername+'/'+model_or_observed+'.'+basin+'_tracks_and_histograms'+$
+      ofile = '/glade/work/ahijevyc/tracking_'+trackername+'/'+model_or_observed+'.'+basin+'_tracks_and_histograms'+$
         string(start_ymd,final_ymd,format='(C(CYI4.4,CMoI2.2,CDI2.2,CHI2.2),"-",C(CYI4.4,CMoI2.2,CDI2.2,CHI2.2))')+ $
-        dxdetails+(gfdl_warmcore_only?"_GFDL_warmcore_only":"")  +'.ps'
+        dxdetails + string(min_duration_days, min_warmcore_fract, format='("_",F3.1,"d_minimum.min_warmcore_fract",F4.2)') +'.ps'
+
+
       if debug then print, "ofile = ",ofile
       if !D.NAME eq 'PS' then device, /close, /color, filename = ofile, bits=8
       !P.MULTI=[2,1,2]
       map_set, /cont, limit=[0,-180,50,180], /iso, title=model_name + ' init dates:' + yyyymmddhh[0] + '-'+yyyymmddhh[-1] + $
-        (gfdl_warmcore_only ? "  warmcore only" : "")
+        string(min_warmcore_fract,format='(".min_warmcore_fract",F4.2)')
       trk_color = {minrange:5, maxrange:35}
       mycolorbar, position=[0.1,0.9,0.9,0.92], minrange=trk_color.minrange, maxrange=trk_color.maxrange, title='m/s', charsize=0.7
 
@@ -415,7 +431,7 @@ pro run_get_all_model_vitals, date=date, trackername=trackername, debug=debug, $
         fcst_hr_hist=fcst_hr_hist, vmax_thresh_kt=vmax_thresh_kt, $
         hist_vital=hist_vital, basin=basin, model_name=model_name, trk_color=trk_color, $
         trackername=trackername, ofile=ofile, trackertype=trackertype, $
-        smooth_radius=smooth_radius, min_duration_days=min_duration_days, debug=debug, gfdl_warmcore_only=gfdl_warmcore_only
+        smooth_radius=smooth_radius, min_duration_days=min_duration_days, debug=debug, min_warmcore_fract=min_warmcore_fract
 
       !P.MULTI = [1,1,2]
       ; plot false alarm histogram in dotted line
