@@ -2,9 +2,9 @@ pro run_find_matching_model_track_old, smooth_radius=smooth_radius, debug=debug,
   trackfield=trackfield, vmax_thresh_kt=vmax_thresh_kt
   ; Create ADECK files for all the BDECK files in a year.  Can be restricted to a particular basin or done globally
   ; by setting basin to '*'.
-  ; BDECK files are best tracks for each tropical storm. I keep them in /glade/p/work/ahijevyc/atcf/b*.dat
+  ; BDECK files are best tracks for each tropical storm. I keep them in /glade/work/ahijevyc/atcf/b*.dat
   ; An ADECK file contains the model tracks that match a particular BDECK system. They can be lumped together all in the same file
-  ; or done separately for each model.  This program does it separately for each model and outputs them to /glade/p/work/ahijevyc/tracking_<trackfield>/<modelname>/.
+  ; or done separately for each model.  This program does it separately for each model and outputs them to /glade/work/ahijevyc/tracking_<trackfield>/<modelname>/.
   ; This program used to be included in the IDL file get_vitals.pro.
   if ~keyword_set(debug) then debug=0
   ; If force_new=1, then any existing output files will be overwritten. If force_new=0 then the output file will
@@ -14,7 +14,7 @@ pro run_find_matching_model_track_old, smooth_radius=smooth_radius, debug=debug,
   if ~keyword_set(trackfield) then trackfield = 'gfdl'
   year = '2014'
   ; BDECK identification numbers must be between 0 and 69.  70 and above are not standard tropical systems or are tracked differently.
-  files = file_search('/glade/p/work/ahijevyc/atcf/b'+basin+'[0-6][0-9]'+year+'.dat', count=nfiles, /fold_case)
+  files = file_search('/glade/work/ahijevyc/atcf/b'+basin+'[0-6][0-9]'+year+'.dat', count=nfiles, /fold_case)
   if ~keyword_set(model) then begin
     if year eq '2014' then models = ['GFS', 'mpas', 'mpas_ep']
     if year eq '2015' then models = ['ep', 'wp', 'al', 'GFS']
@@ -24,7 +24,7 @@ pro run_find_matching_model_track_old, smooth_radius=smooth_radius, debug=debug,
   for m=0,n_elements(models)-1 do begin
     model = mpas_mesh(models[m])
     origmesh=model.name eq 'GFS'?0:1
-    openw, miss_lun, '/glade/p/work/ahijevyc/tracking_gfdl/miss_'+model.name+'_'+idl_validname(strupcase(basin))+$
+    openw, miss_lun, '/glade/work/ahijevyc/tracking_gfdl/miss_'+model.name+'_'+idl_validname(strupcase(basin))+$
       '_origmesh' + (origmesh eq 1 ? 'True' : 'False') + $
       string(vmax_thresh_kt,format='("_",I2,"kt")')+'.txt', /get_lun
     for ifile = 0, nfiles-1 do find_matching_model_track_old, files[ifile], model=model, $
@@ -68,13 +68,13 @@ pro find_matching_model_track_old, bdeck_file, model=model, trackfield=trackfiel
   
   ; for ONE observed best track (BDECK), find all model runs that overlap the time window of the BDECK system.
   ; Find the closest vortex track in each model run and determine if it is close enough to match.
-  ; Write matches in ATCF format to an ADECK file that is saved in /glade/p/work/ahijevyc/tracking_gfdl/<modelname>/.
+  ; Write matches in ATCF format to an ADECK file that is saved in /glade/work/ahijevyc/tracking_gfdl/<modelname>/.
   atmos_const
   if ~keyword_set(debug) then debug = 0
   min_duration_days = 1.d  ; minimum duration of model model_track to consider  (unless observation is on boundary of model time window)
   must_reach_intensity = 5e-5
   if ~keyword_set(force_new) then force_new = 0 ; force_new=1 forces atcf file and vitals save file to be remade.
-  if n_elements(bdeck_file) eq 0 then bdeck_file = '/glade/p/work/ahijevyc/atcf/bep142014.dat'
+  if n_elements(bdeck_file) eq 0 then bdeck_file = '/glade/work/ahijevyc/atcf/bep142014.dat'
   if ~keyword_set(model) then model = mpas_mesh('mpas15_3') else if isa(model,/scalar) then model=mpas_mesh(model)
   total_model_days = strmatch(model.name, 'GFS*') ? 8d : 10d
   if (model.name eq 'mpas15_3') then total_model_days = 3d
@@ -101,16 +101,16 @@ pro find_matching_model_track_old, bdeck_file, model=model, trackfield=trackfiel
     junk=max(obs.vmax,imax)
     stormname = (obs.stormname)[imax]
   endif else begin
-    bdeck_file = file_search('/glade/p/work/ahijevyc/hurricane/*/20*/'+bdeck_file, count=count)
+    bdeck_file = file_search('/glade/work/ahijevyc/hurricane/*/20*/'+bdeck_file, count=count)
     if count ne 1 then stop
     obs = read_unisys_best_track(bdeck_file, header=header)
-    iobs = where(finite(obs.julday), /null)
+    iobs = where(finite(obs.valid_time), /null)
     stormname = file_basename(bdeck_file,"_track.dat")
     bdeck_file = unisys2atcf_filename(bdeck_file)
   endelse
   
   ; print_atcf will use characters in columns 2-3 of file_basename for basin name
-  my_atcf_file = '/glade/p/work/ahijevyc/tracking_'+trackfield+'/adeck/'+ model.name + $
+  my_atcf_file = '/glade/work/ahijevyc/tracking_'+trackfield+'/adeck/'+ model.name + $
     string(vmax_thresh_kt,format='("/vmax_thresh_kt.ge.",I2.2)') + $
     '/a' + strmid(file_basename(bdeck_file),1) + dxdetails +'_'+trackfield+ $
     '_origmesh' + (origmesh?'True':'False') + string(min_duration_days, format='("_",F3.1,"d_minimum")')
@@ -121,7 +121,7 @@ pro find_matching_model_track_old, bdeck_file, model=model, trackfield=trackfiel
   endif
   
   
-  observed_times = obs.julday[iobs]
+  observed_times = obs.valid_time[iobs]
   obs_first = min(observed_times)
   obs_last  = max(observed_times)
   observed_lons = obs.lon[iobs]
@@ -198,7 +198,7 @@ pro find_matching_model_track_old, bdeck_file, model=model, trackfield=trackfiel
       ; If previous track hasn't ended yet but this one starts before the previous track's
       ;  early_distance_match time, then don't skip.
       ; See mpas_al 20130827 Gabrielle #29. It's a poor match compared to #35 and #556.
-      if matching_model_tracks.count() gt 0 && first_time le matching_model_tracks[-1].times[-1] && $
+      if matching_model_tracks.count() gt 0 && first_time le matching_model_tracks[-1].valid_time[-1] && $
         first_time gt matching_model_tracks[-1].early_distance_match_time then continue
         
       ; if this model_track segment doesn't last at least min_duration_days then skip it.
@@ -312,7 +312,7 @@ pro find_matching_model_track_old, bdeck_file, model=model, trackfield=trackfiel
             matching_model_tracks.add, model_track
           endif
           ; add if this new track starts after the previous track ends.
-          if first_time gt matching_model_tracks[-1].times[-1] then matching_model_tracks.add, model_track
+          if first_time gt matching_model_tracks[-1].valid_time[-1] then matching_model_tracks.add, model_track
           
         endelse
       endif
@@ -334,7 +334,7 @@ pro find_matching_model_track_old, bdeck_file, model=model, trackfield=trackfiel
       ; Not sure I want to only interpolate to the observed times . That makes sense when there are gaps between
       ; matching model tracks, but can u keep times in the matching model tracks that are not in the observed tracks?
       best_model_track = join_model_tracks(matching_model_tracks, observed_times)
-      duration_h = (max(best_model_track.times) - min(best_model_track.times)) * 24
+      duration_h = (max(best_model_track.valid_time) - min(best_model_track.valid_time)) * 24
       print, stormname + ' best match is ' + strjoin(best_model_track.id,'/'), model_tracks_files[iinit],$
         max(best_model_track.intensity), duration_h, format='(A, " in ", A," ",E8.1,I4,"h")'
         
