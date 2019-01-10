@@ -8,7 +8,8 @@ function mpas_read, file, field=field, ncid=ncid
   var_names = list()
   for i=0,n_elements(varids)-1 do var_names.add, (ncdf_varinq(ncid, varids[i])).name
 
-  if keyword_set(field) and var_names.where(field) eq !NULL then begin
+  if keyword_set(field) and var_names.where(field) eq !NULL and field ne 'speed10' then begin
+    ; speed10 can be derived later. don't panic yet.
     print, field, " not found in ",file
     return, !NULL
   endif
