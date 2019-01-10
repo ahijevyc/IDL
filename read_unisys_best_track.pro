@@ -15,9 +15,9 @@ function read_unisys_best_track, file, _extra=_extra
     
   t = read_ascii(file, template=unisys_template, header=header, count=n, _extra=_extra)
   tc_track_years= replicate(strmid(header[0],3,/reverse), n)
-  month = strmid(t.time, 0,2)
-  day = strmid(t.time,3,2)
-  hour = strmid(t.time,6,2)
+  month = strmid(t.valid_time, 0,2)
+  day = strmid(t.valid_time,3,2)
+  hour = strmid(t.valid_time,6,2)
   jday = julday(month,day,tc_track_years,hour,0,0)
   stormname = file_basename(file, '_track.dat')
   stormname = replicate(stormname, n_elements(n))

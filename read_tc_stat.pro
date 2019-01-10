@@ -7,7 +7,7 @@ function read_tc_stat, file
   ; tc_stat -job summary -lookin out_tcmpr.tcst -by AMODEL,LEAD,BASIN -column TK_ERR -event_equal TRUE -out TK_ERR.tc_stat
   ;tc_stat -job summary -lookin out_tcmpr.tcst -by LEAD -by amodel -column AMAX_WIND-BMAX_WIND -out t -by storm_name
 
-  ; see /glade/p/work/ahijevyc/METv4.1/filter_matches.csh for more pre processing examples.
+  ; see /glade/work/ahijevyc/METv4.1/filter_matches.csh for more pre processing examples.
 
   openr, lun, file, /get_lun
   header=!NULL

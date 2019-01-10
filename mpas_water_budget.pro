@@ -18,7 +18,7 @@ pro mpas_water_budget, date=date, model_name=model_name, debug = debug
   imask = where(abs(latCell) ge latbound)
   areaCell[imask] = !VALUES.D_NAN
   files = file_search([basedir+'diag*.*_'+(debug?'00':'??')+'.00.00.nc'], count=nfiles)
-  if strlen(date) eq 4 then files = file_search('/glade/p/work/ahijevyc/mpas_plots/'+model.name+'/f???.nc', count=nfiles)
+  if strlen(date) eq 4 then files = file_search('/glade/work/ahijevyc/mpas_plots/'+model.name+'/f???.nc', count=nfiles)
   xtimes = replicate(!VALUES.D_NAN, nfiles)
   fieldnames=['precipw','rain','lh']
   nfields=n_elements(fieldnames)

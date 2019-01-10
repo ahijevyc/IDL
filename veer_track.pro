@@ -1,5 +1,5 @@
 pro veer_track
-  track = read_atcf('/glade/p/work/ahijevyc/atcf/bal112015.dat')
+  track = read_atcf('/glade/work/ahijevyc/atcf/bal112015.dat')
   
   ; The angles really add up.  
   ; So you may skip the first [skip] track segments.
@@ -30,7 +30,7 @@ pro veer_track
       lon1 = track.lon[i+1]
       lat1 = track.lat[i+1]
       ; days since start of track
-      dt = track.julday[i+1] - track.julday[0]
+      dt = track.valid_time[i+1] - track.valid_time[0]
       result = map_2points(lon0, lat0, lon1, lat1)
       ; get distance and heading of control track segment
       d = result[0]
@@ -52,7 +52,7 @@ pro veer_track
       fill_background=1, vertical_alignment=0.5*(1-cos(az*!DTOR)), alignment=0.5*(1+sin(-az*!DTOR)),/data)
   endforeach
   junk = timestamp_text()
-  ofile = "/glade/p/work/ahijevyc/ADCIRC/veer_track_plots/"+strcompress(p.title.string,/rem)+track.init_yyyymmddhh[0]+".png"
+  ofile = "/glade/work/ahijevyc/ADCIRC/veer_track_plots/"+strcompress(p.title.string,/rem)+track.init_yyyymmddhh[0]+".png"
   p.window.save, ofile, resolution=180
   print, "saved "+ofile
   p.window.close

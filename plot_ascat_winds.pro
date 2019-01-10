@@ -62,7 +62,7 @@ function getflags, ncid, varstring
 end
 
 pro all_figs
-  basedir = '/glade/p/work/ahijevyc/ascat/2014/'
+  basedir = '/glade/work/ahijevyc/ascat/2014/'
   ;plot_ascat_winds, basedir+'Fig1a.ps', file_search(basedir+'QS_XWGRD3_200824[3]*'), 32., 36., 142., 148.5
   ;plot_ascat_winds, basedir+'fig1b.ps', file_search(basedir+'QS_XWGRD3_2008244*'), 35.5, 39.5, 142., 148.5
   ;plot_ascat_winds, basedir+'panels_c_d.ps', file_search(basedir+'ascat_2008090[12]_*.nc'), 32.,36.,149,155.5
@@ -91,7 +91,7 @@ pro plot_ascat_winds, inpsfile, files, latmin, latmax, lonmin, lonmax, fcst_day=
   ; But that's still not going to do it. The fcst-init composites use every day, while ASCAT
   ; overpasses only will have every other day for any particular point on Earth.
   if n_elements(fcst_day) eq 0 then fcst_day = 5; forecast day
-  if n_elements(files) eq 0 then files =  file_search('/glade/p/work/ahijevyc/ascat/2014/ascat_[12][0-9][0-9][0-9]*_*_metop?_*_250_*.nc')
+  if n_elements(files) eq 0 then files =  file_search('/glade/work/ahijevyc/ascat/2014/ascat_[12][0-9][0-9][0-9]*_*_metop?_*_250_*.nc')
   if n_elements(latmin) eq 0 then latmin=-30
   if n_elements(latmax) eq 0 then latmax=30
   if n_elements(lonmin) eq 0 then lonmin=0
@@ -492,10 +492,10 @@ pro h2d, fcst_day=fcst_day
   models = ['mpas','GFS']
   foreach model,models,imodel do begin
     lonss = ['180-270','270-360','000-090','090-180']
-    if file_test('/glade/p/work/ahijevyc/ascat/'+year+'/'+model+'_'+time_window+'_fd'+strtrim(fcst_day,2)+'_000-360E'+(just00Z eq 1?'_just00Z':'')+'_h2d.sav') then lonss = ['000-360']
+    if file_test('/glade/work/ahijevyc/ascat/'+year+'/'+model+'_'+time_window+'_fd'+strtrim(fcst_day,2)+'_000-360E'+(just00Z eq 1?'_just00Z':'')+'_h2d.sav') then lonss = ['000-360']
     ;lonss = ['180-270','270-360','000-090','090-180']; uncomment if you want to use the 'old' GFS without the 6, 12, and 18Z included
     foreach lons, lonss, ifile do begin
-      file = '/glade/p/work/ahijevyc/ascat/'+year+'/'+model+'_'+time_window+'_fd'+strtrim(fcst_day,2)+'_'+lons+'E'+(just00Z eq 1?'_just00Z':'')+'_h2d.sav'
+      file = '/glade/work/ahijevyc/ascat/'+year+'/'+model+'_'+time_window+'_fd'+strtrim(fcst_day,2)+'_'+lons+'E'+(just00Z eq 1?'_just00Z':'')+'_h2d.sav'
       fi = file_info(file)
       if ifile gt 0 then old_sum_latlon = sum_latlon
       if ifile gt 0 then old_adj_sum_latlon = adj_sum_latlon

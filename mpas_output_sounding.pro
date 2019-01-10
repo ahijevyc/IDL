@@ -52,10 +52,10 @@ pro mpas_output_sounding
   lon0 = 259.3 & lat0 = -2
   lon0 = 260.3
   ; lon0= 230 & lat0 = -70
-  ;lon0=360-112.3 & lat0=-6.7 & cosmic_file='/glade/p/work/ahijevyc/cosmic/wetPrf/2014.242/wetPrf_C001.2014.242.21.45.G29_2014.2860_nc'
-  ;lon0=360-101.8 & lat0=-2.6 & cosmic_file='/glade/p/work/ahijevyc/cosmic/wetPrf/2014.241/wetPrf_C002.2014.241.07.42.G21_2014.2860_nc'
-  ;lon0=360-100.7 & lat0=-2. & cosmic_file='/glade/p/work/ahijevyc/cosmic/wetPrf/2014.241/wetPrf_C002.2014.241.06.11.G32_2014.2860_nc'
-  ;lon0=360-99.3 & lat0=-1.2 & cosmic_file='/glade/p/work/ahijevyc/cosmic/wetPrf/2014.244/wetPrf_C001.2014.244.08.10.G07_2014.2860_nc'
+  ;lon0=360-112.3 & lat0=-6.7 & cosmic_file='/glade/work/ahijevyc/cosmic/wetPrf/2014.242/wetPrf_C001.2014.242.21.45.G29_2014.2860_nc'
+  ;lon0=360-101.8 & lat0=-2.6 & cosmic_file='/glade/work/ahijevyc/cosmic/wetPrf/2014.241/wetPrf_C002.2014.241.07.42.G21_2014.2860_nc'
+  ;lon0=360-100.7 & lat0=-2. & cosmic_file='/glade/work/ahijevyc/cosmic/wetPrf/2014.241/wetPrf_C002.2014.241.06.11.G32_2014.2860_nc'
+  ;lon0=360-99.3 & lat0=-1.2 & cosmic_file='/glade/work/ahijevyc/cosmic/wetPrf/2014.244/wetPrf_C001.2014.244.08.10.G07_2014.2860_nc'
   ; lon0 = 270 & lat0=26.5
   
   search_radius_km=15

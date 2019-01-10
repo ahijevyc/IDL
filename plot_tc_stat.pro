@@ -21,7 +21,7 @@ function read_max_vmax_comparison, file
 end
 
 pro plot_tc_stat, basin=basin, storm_name=storm_name, buffer=buffer
-  basedir = '/glade/p/work/ahijevyc/'
+  basedir = '/glade/work/ahijevyc/'
   column = 'TK_ERR' ; 'TK_ERR' 'ABS(AMAX_WIND-BMAX_WIND)'
   ; if tc_stat_file doesn't exist then try running run_plot_tc_stat below.
   tc_stat_file = basedir + 'METv4.1/' + column +'.tc_stat'

@@ -92,7 +92,7 @@ pro tracking, debug=debug, use_extrap=use_extrap, max_time_gap=max_time_gap, dat
   clean = 0 ; less labeling bigger font
   
   
-  ofile = '/glade/p/work/ahijevyc/tracking_'+strjoin(trackfields,'_')+'/tracking_'+date+'_'+strjoin(trackfields,'_')+dxdetails+'.png'
+  ofile = '/glade/work/ahijevyc/tracking_'+strjoin(trackfields,'_')+'/tracking_'+date+'_'+strjoin(trackfields,'_')+dxdetails+'.png'
   
   basedir = '/glade/p/nmmm0024/'
   mpass=['mpas','mpas_al','mpas_wp','GFS']
@@ -170,7 +170,7 @@ pro tracking, debug=debug, use_extrap=use_extrap, max_time_gap=max_time_gap, dat
         endif
         nstorm=n_elements(storms)
         next_empty_mcv = nstorm
-        times = gfdl_m.julday
+        times = gfdl_m.valid_time
       endif else if file_test(tracks_file) && force_new eq 0 then begin
         restore, tracks_file
         map.title = tracks_file + title_string(specs) + my_tracking_params + filter_params
@@ -194,7 +194,7 @@ pro tracking, debug=debug, use_extrap=use_extrap, max_time_gap=max_time_gap, dat
         imod = where(data.lon ge 180., /null)
         if imod ne !NULL then data.lon[imod] = data.lon[imod] - 360.
         
-        times = data.time
+        times = data.valid_time
         
         ; TIME LOOP - min time thru max time by delta time.
         for time = init_time+starting_at_hour/24d, max(times), delta do begin
@@ -422,8 +422,8 @@ pro best_tracks, init_time, finish, forecast_start, forecast_end, map, rgb_table
   
   for year = startyear, endyear do begin
     ; uncomment for Unisys files
-    ;files = file_search('/glade/p/work/ahijevyc/hurricane/*/'+strtrim(year,2)+'/*_track.dat', count=nfiles)
-    files = file_search('/glade/p/work/ahijevyc/atcf/b??[0-6][0-9]????.dat', count=nfiles)
+    ;files = file_search('/glade/work/ahijevyc/hurricane/*/'+strtrim(year,2)+'/*_track.dat', count=nfiles)
+    files = file_search('/glade/work/ahijevyc/atcf/b??[0-6][0-9]????.dat', count=nfiles)
     ; files = file_search('/glade/scratch/ahijevyc/mpas2/2013091300/latlon'+dxdetails+'/gfdl_tracker/a??[0-9][0-9][0-9][0-9][12][0-9][0-9][0-9].dat', count=nfiles)
     
     for ifile = 0, nfiles-1 do begin
@@ -438,7 +438,7 @@ pro best_tracks, init_time, finish, forecast_start, forecast_end, map, rgb_table
       if unisys_file then st = read_unisys_best_track(file) else st = read_atcf(file)
       ;        save, st, filename=savfile
       ;      endelse
-      tc_track_jdays = st.julday
+      tc_track_jdays = st.valid_time
       junk=max(st.vmax,imax)
       stormname = (st.stormname)[imax]
       
@@ -482,10 +482,10 @@ pro hits_and_misses
     
   atmos_const  
   if !D.NAME eq 'X' then erase
-  outdir = '/glade/p/work/ahijevyc/mpas_plots/'
+  outdir = '/glade/work/ahijevyc/mpas_plots/'
   basins = ['EP','AL','WP']
   models = ['mpas','mpas_ep','GFS']
-  hm_file='/glade/p/work/ahijevyc/tracking_gfdl/hm.'+strjoin(models,'.')
+  hm_file='/glade/work/ahijevyc/tracking_gfdl/hm.'+strjoin(models,'.')
   if file_test(hm_file) eq 0 then begin
     openw, lun, hm_file, /get_lun
     foreach model, models do begin
