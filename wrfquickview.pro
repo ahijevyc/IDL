@@ -69,9 +69,9 @@ pro WRFquickview
   clobber=1
   debug=1
   
-  basedir='/glade/p/work/ahijevyc/mpex/ensf/2013051915/mem*[6]/'
+  basedir='/glade/work/ahijevyc/mpex/ensf/2013051915/mem*[6]/'
   basedir='/glade/scratch/ahijevyc/mpex/2013051915/mem[69]/'
-  basedir='/glade/p/work/ahijevyc/NCAR_ENSEMBLE_2015/dev/DOMAINS/BMIN_OUTPUT/'
+  basedir='/glade/work/ahijevyc/NCAR_ENSEMBLE_2015/dev/DOMAINS/BMIN_OUTPUT/'
   basedir='/glade/scratch/ahijevyc/trier/ens_1/'
   search_str = basedir+'wrfout_d02*_*:00'
   infiles = file_search(search_str, count=nfiles)
@@ -298,7 +298,7 @@ pro closest_model_skewT, lon, lat, jday, var, var2=var2, entrainment_rate=entrai
   loadct, 39, /silent
   if ~keyword_set(debug) then debug=0
   
-  basedir='/glade/p/work/ahijevyc/mpex/ensf/2013051915/mem6/'
+  basedir='/glade/work/ahijevyc/mpex/ensf/2013051915/mem6/'
   ;basedir='/glade/scratch/ahijevyc/mpex/2013051915/mem9/'
   basedir='/glade/scratch/ahijevyc/mpex/2013051915/mem6/'
   
@@ -420,7 +420,7 @@ pro skewT_obs
     window, 1, xsize=900, ysize=1100
   endif
   
-  basedir='/glade/p/work/ahijevyc/mpex/May19Upsondes/'
+  basedir='/glade/work/ahijevyc/mpex/May19Upsondes/'
   basedir='/glade/scratch/ahijevyc/pecan/'
   atmos_const
   syms = list()
@@ -443,7 +443,7 @@ pro skewT_obs
     pwin.SetCurrent
   endif
   
-  map = WRFmap('/glade/p/work/ahijevyc/mpex/ensf/2013051915/mem6/wrfout_d02_2013-05-19_18:30:00_dense_bmin3.nc',$
+  map = WRFmap('/glade/work/ahijevyc/mpex/ensf/2013051915/mem6/wrfout_d02_2013-05-19_18:30:00_dense_bmin3.nc',$
     font_size=14, current=pwin ne !NULL)
     
   ; erase these windows.
@@ -556,7 +556,7 @@ pro plot_bmin
   win = GetWindows(/current)
   if win ne !NULL then win.erase
   
-  basedir='/glade/p/work/ahijevyc/mpex/ensf/2013051915/mem6/'
+  basedir='/glade/work/ahijevyc/mpex/ensf/2013051915/mem6/'
   basedir='/glade/scratch/ahijevyc/mpex/2013051915/mem[69]/'
   files = file_search(basedir+'wrfout_d03_2013-05-19_19:00:00_small_bmin3.nc',count=nfiles)
   fieldnames = ['bmin_pseudo', 'mcape_pseudo']
