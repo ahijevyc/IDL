@@ -1,9 +1,22 @@
-pro print_atcf, atcf, atcf_file_in, best_model_track, debug=debug
+pro print_atcf, atcf, atcf_file_in, best_model_track,$
+  fullcircle=fullcircle,$
+  debug=debug
+
   atmos_const
   if ~keyword_set(debug) then debug=0
+  if ~keyword_set(fullcircle) then fullcircle=0
+  ; TODO: deal with fullcircle=True
+  if fullcircle then stop
+  ; fullcircle=1 means "calculate the full circle maximum wind radii"  WINDCODE='AAA'
+  ; instead of (or in addition to) the quadrants wind radii WINDCODE='NEQ'
+  ; By default, don't do it.
+  ; As of met-8.0, if both NEQ and AAA lines are present, tc_pairs/tc_stat produces
+  ; missing wind radii errors in the .tcst file.
   atcf_file = file_basename(atcf_file_in)
+
   ; un-"list" matching_model_track.
   if isa(best_model_track,'List') then best_model_track = best_model_track[0]
+
   model_abbrev = atcf_modelname(best_model_track.model_name)
   ; basin equals characters 2-3 of atcf filename
   basin = strmid(atcf_file,1,2)
@@ -16,7 +29,17 @@ pro print_atcf, atcf, atcf_file_in, best_model_track, debug=debug
   mpas = mpas_mesh(best_model_track.model_name)
 
   for itime = 0, n_elements(best_model_track.valid_time)-1 do begin
-    if not finite(best_model_track.valid_time[itime]) then continue
+    if ~finite(best_model_track.valid_time[itime]) then continue
+
+    ; if origmesh=1 but model file doesn't exist at observed time,
+    ; vmax, mslp, and RMW may be missing.
+    ; Don't print the line in this case.
+    ; note use of tilde ~ instead of "not". if "not" is used, it returns 254 (a true value) 
+    ; instead of 0, a false value. That is because "not" is a bitwise operator not a logical operator (like ~)
+    if ~finite(best_model_track.max_spd10m[itime]) && ~finite(best_model_track.min_slp[itime]) then begin
+      print, 'print_atcf: ',init_date, ' fh=',fh[itime], ' bad vmax and mslp. skipping line'
+      continue
+    endif
 
     lon = best_model_track.lon[itime]
     lat = best_model_track.lat[itime]
@@ -24,7 +47,7 @@ pro print_atcf, atcf, atcf_file_in, best_model_track, debug=debug
     NS = lat ge 0 ? 'N' : 'S'
     EW = lon ge 0 ? 'E' : 'W'
     max_spd10m = round(best_model_track.max_spd10m[itime] * meters_per_second2knots)
-    min_slp   = round(best_model_track.min_slp[itime]/100)
+    min_slp    = round(best_model_track.min_slp[itime]/100)
     ; Print NaNs as zeros. Convert km to nm, rounding to the nearest nm.
 
     NE34      = 0
@@ -66,7 +89,7 @@ pro print_atcf, atcf, atcf_file_in, best_model_track, debug=debug
     initials = 'DAA'
     dir = 0
     speed = 0
-    
+
     stormname = CY eq 'XX' ? CY : best_model_track.stormname
     mybasin = atcf_basin(lon, lat, subregion=subregion) ; subregion used in atcf line
 
@@ -75,6 +98,8 @@ pro print_atcf, atcf, atcf_file_in, best_model_track, debug=debug
       string(fh[itime], round(10*abs([lat, lon])), format='(i3,", ",i3,"'+NS+', ",i4,"'+EW+', ")') + $
       string(max_spd10m, min_slp, format='(i3,", ",i4,", XX,")')
 
+    ; "fullcircle" WINDCODE or radius code is available with the python module
+    ; ~ahijevyc/lib/python2.7/atcf.py.  It finds the greatest radius in all quadrants.
     thresh_stuff = "  34, NEQ" + string(NE34, SE34, SW34, NW34,format='(4(", ", i4))')
 
     atcf_end =  ',    0,    0, ' + string(RMW, format='(i3,", ")') + '  0,   0, ' + $
