@@ -6,7 +6,7 @@ function join_model_tracks, model_tracks, observed_times_in
   ;  join_model_tracks() just needs a stack of unique times to interpolate to. Repeated times don't help (or hurt) it.
    
   ; This sanity check caught a bad bal522016.dat file in which the storm number changed from '52' to '06' for two times.
-  if not array_equal(observed_times, observed_times[sort(observed_times)]) then stop ; sanity check - observed_times monotonically ascends
+  if ~ array_equal(observed_times, observed_times[sort(observed_times)]) then stop ; sanity check - observed_times monotonically ascends
   observed_times = observed_times[uniq(observed_times)] 
 
   ; join the model_tracks from tip to tail and interpolate to observed_times
@@ -58,7 +58,15 @@ function join_model_tracks, model_tracks, observed_times_in
   old_lons   = interpol_nan(     lons, valid_times, all_valid_times)
   lons       = interpol_nan(     lons, valid_times, all_valid_times, /circle)
   if not array_equal(old_lons, lons) then begin
-    print, 'after fixing longitude interpolation, they changed', old_lons, lons
+    print, 'after fixing longitude interpolation, they changed'
+    print, old_lons
+    print, lons
+    biggest_difference = max(abs(old_lons-lons))
+    if biggest_difference gt 0.00001 then print, old_lons-lons
+    if biggest_difference gt 0.002 then begin
+      print, old_lons-lons
+      stop
+    endif
   endif
   lats       = interpol_nan(     lats, valid_times, all_valid_times)
   intensity  = interpol_nan(intensity, valid_times, all_valid_times)
