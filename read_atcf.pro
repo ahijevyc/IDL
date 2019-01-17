@@ -67,7 +67,7 @@ function read_atcf, file, lats=lat2D, lons=lon2D, valid_time=valid_time2D, inten
   b = ''
 
   ; Return !NULL if file doesn't exist
-  if not file_test(file) then begin
+  if ~ file_test(file) then begin
     print, 'read_atcf: ',file, ' does not exist!'
     return, dictionary()
   endif
@@ -89,7 +89,7 @@ function read_atcf, file, lats=lat2D, lons=lon2D, valid_time=valid_time2D, inten
   template = atcf_template
   if matches_fort66 then template = fort66_template
   if matches_fort64 then template = fort64_template
-  if not matches_fort66 and not matches_fort64 then begin
+  if ~ matches_fort66 and ~ matches_fort64 then begin
     ;print, 'read_atcf does not recognize ',file,' as fort.64 or fort.66 format'
     ;print, 'assuming atcf_template will work for read_ascii()'
   endif
