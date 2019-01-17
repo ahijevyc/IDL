@@ -4,7 +4,7 @@ pro run_find_matching_model_track, debug=debug, force_new=force_new, model=model
   ; done globally by setting basin to '*'.
   ; BDECK files are best tracks for each tropical storm. I keep them in /glade/work/ahijevyc/atcf/b*.dat
   ; An ADECK file contains the model tracks that match a particular BDECK system. They can be lumped together all in the same file
-  ; or done separately for each model.  This program does it separately for each model and outputs them to 
+  ; or done separately for each model.  This program does it separately for each model and outputs them to
   ; /glade/work/ahijevyc/tracking_<tracker>/<modelname>/(tcgen|tracker)/.
   ; This program used to be included in the IDL file get_vitals.pro.
   if ~keyword_set(debug) then debug=0
@@ -15,7 +15,7 @@ pro run_find_matching_model_track, debug=debug, force_new=force_new, model=model
   if ~keyword_set(year) then year = '2018'
   if n_elements(trackertype) eq 0 then trackertype='tcgen'
   if n_elements(min_warmcore_fract) eq 0 then min_warmcore_fract = 0.25 ; made 0.25 default Nov 20, 2018
-   ; Made default 1 Nov 21, 2016. It was 0 by default in read_atcf.pro prior to that.
+  ; Made default 1 Nov 21, 2016. It was 0 by default in read_atcf.pro prior to that.
 
   ; BDECK identification numbers must be between 0 and 69.  70 and above are not standard tropical systems or are tracked differently.
   files = file_search('/glade/work/ahijevyc/atcf/b'+basin+'[0-6][0-9]'+year+'.dat', count=nfiles, /fold_case)
@@ -74,7 +74,7 @@ pro find_matching_model_track, bdeck_file, model=model, force_new=force_new, deb
   if n_elements(trackertype) eq 0 then trackertype = 'tcgen'
   min_duration_days = 1.d  ; minimum duration of model model_track to consider (unless observation is on boundary of model time window)
   if ~keyword_set(force_new) then force_new = 0 ; force_new=1 forces atcf file and vitals save file to be remade.
-  if n_elements(bdeck_file) eq 0 then bdeck_file = '/glade/work/ahijevyc/atcf/bal112017.dat'
+  if n_elements(bdeck_file) eq 0 then bdeck_file = '/glade/work/ahijevyc/atcf/bwp082018.dat'
   parent_id = '9qw58wx10r'
   if ~keyword_set(model) then model = mpas_mesh('uni') else if isa(model,/scalar) then model=mpas_mesh(model)
   total_model_days = strmatch(model.name, 'GFS*') ? 8d : 10d
@@ -87,24 +87,24 @@ pro find_matching_model_track, bdeck_file, model=model, force_new=force_new, deb
   ; You can find tracks and histograms with GFDL_warmcore_only in "old/" subdirectory under
   ; /glade/work/ahijevyc/tracking_gfdl/.
   if n_elements(min_warmcore_fract) eq 0 then begin
-    min_warmcore_fract = 0.25 
+    min_warmcore_fract = 0.25
   endif else begin
     if min_warmcore_fract lt 0 or min_warmcore_fract gt 1 then begin
       print, 'min_warm_fract must be 0-1'
       stop, min_warmcore_fract
     endif
   endelse
-  
+
   ; fort.64 or fort.66 file must be in possible_fort66_dirs/yyyymmdd00/latlon_dxdetails/gfdl_tracker/tracker_type/.
   possible_fort66_dirs = ['/glade/scratch/ahijevyc/','/glade/scratch/mpasrt/'] + model.name
-  
+
   tracker = 'gfdl'
   smooth_radius_str = strmatch(model.name, 'GFS*') ? '' : '_025km'
   grid_dx = 0.5
   if strmatch(model.name, 'GFS*') then grid_dx = 0.25
   dxdetails = string(grid_dx,format='("_",F5.3,"deg")')+smooth_radius_str
   ; Tried requiring model tracks to reach a threshold in order to be a hit.
-  ; Now we let them through and let tc_stat handle weak tracks. 
+  ; Now we let them through and let tc_stat handle weak tracks.
   ; That is why we had "vmax_thresh_kt.ge.XX" in the output directory
   ; structure.
   start_new_atcf_output_file=1
@@ -135,7 +135,7 @@ pro find_matching_model_track, bdeck_file, model=model, force_new=force_new, deb
   ; defined below (fort.64 path)
   my_atcf_file = '/glade/work/ahijevyc/tracking_'+tracker+'/adeck/'+ model.name + $
     "/" + trackertype + '/a' + storm_id + dxdetails +'_'+tracker+ '_origmesh' + (origmesh?'True':'False') + $
-    string(min_duration_days, min_warmcore_fract, format='("_",F3.1,"d_minimum.min_warmcore_fract",F4.2)') 
+    string(min_duration_days, min_warmcore_fract, format='("_",F3.1,"d_minimum.min_warmcore_fract",F4.2)')
 
   if file_test(my_atcf_file) && file_test(my_atcf_file, /zero_length) eq 0 && force_new eq 0 then begin
     print, "found ", my_atcf_file, ". skipping. "
@@ -156,7 +156,7 @@ pro find_matching_model_track, bdeck_file, model=model, force_new=force_new, deb
 
   ; Find the model tracks files for overlapping model runs for this particular model type and smoothing radius.
   search_str = possible_fort66_dirs +'/'+year+'[01][0-9][0-3][0-9][012][0-9]'+$
-     ; '/ecic'+$ ; Temporary kludge - also alter model_basedirs in add_vitals.pro
+    ; '/ecic'+$ ; Temporary kludge - also alter model_basedirs in add_vitals.pro
     (strmatch(model.name,'GFS*')?'':'/latlon'+dxdetails)+$
     '/gfdl_tracker/'+trackertype+'/fort.' + (strmatch(trackertype,'tcgen*')? '66':'64')
   model_tracks_files = file_search(search_str, count=nmodel_tracks_files)
@@ -192,7 +192,7 @@ pro find_matching_model_track, bdeck_file, model=model, force_new=force_new, deb
   for iinit = 0, n_elements(model_tracks_files)-1 do begin
     init_time = model_tracks_file_juldays[iinit]
     init_date = string(init_time, format='(C(CYI4.4, CMoI2.2, CDI2.2, CHI2.2))')
-    ;if init_date ne '2018080600' then continue
+    if init_date ne '2018060700' then continue
 
     ; Read entire atcf file (usually fort.64 or fort.66)
     ; gfdl_m dictionary will have a 1-D array for each atcf column
@@ -209,7 +209,7 @@ pro find_matching_model_track, bdeck_file, model=model, force_new=force_new, deb
       ;For tracks after Dec 9, 2016, there should be no issue with multiple instances
       ;of the same storm. Now wget_tcvitals.csh fixes it.
       ;However it didn't fix the zeros for al/2015091400/tracker.
-      ; It still gets zeros in lat lon for the first hour for 94L Invest.      
+      ; It still gets zeros in lat lon for the first hour for 94L Invest.
       ; stop
     endif
 
@@ -270,30 +270,41 @@ pro find_matching_model_track, bdeck_file, model=model, force_new=force_new, deb
         imatch = where(abs(tc_times[itrack,*] - observed_time) lt 1/24d, nmatch, /null)
         if nmatch gt 1 then stop
         ; If the observed time is within the model_track time window, but doesn't match
-        ; a model_track time exactly, then interpolate the model_track lat/lon/intensity to the oberved time and
-        ; insert the interpolated values in the tc_lats,tc_lons,tc_itensity,tc_times arrays
+        ; a model_track time exactly, then interpolate model_track lat/lon/intensity to observed time
+        ; and insert the interpolated values in the tc_lats,tc_lons,tc_itensity,tc_times arrays
         ; I could use great circle interpolation but for small distances, it shouldn't matter.
-        if imatch eq !NULL && observed_time ge first_time && observed_time le last_time then begin ; interpolate to observed time
-          imatch = 1+max(where(tc_times[itrack,*] le observed_time))
-          newlon       = interpol(     tc_lons[itrack,imatch-1:imatch], tc_times[itrack,imatch-1:imatch], observed_time)
-          newlat       = interpol(     tc_lats[itrack,imatch-1:imatch], tc_times[itrack,imatch-1:imatch], observed_time)
-          newintensity = interpol(tc_intensity[itrack,imatch-1:imatch], tc_times[itrack,imatch-1:imatch], observed_time)
-          if finite(tc_lons[itrack,-1]) then begin
-            ; expand time dimension by 1 to allow for new point.
-            ; last element should be unfilled
-            tc_lons = expand(tc_lons)
-            tc_lats = expand(tc_lats)
-            tc_times = expand(tc_times)
-            tc_intensity = expand(tc_intensity)
+        ;
+        ; This is a problem when the model has no output at this time. But is needed when
+        ; the matching model track is a composite of more than one model track.
+        ; It works for origmesh=0, as we don't need a diagnostic model data at this
+        ; time, but not necessarily for origmesh=1.  If you have a strange observed time, like 01Z
+        ; (for landfall point, for example), when there is no model output file, how do you handle
+        ; the intensity? Deal with this later in add_vitals.
+        ; BUT WAIT! DOESN'T JOIN_MODEL_TRACKS DO THE SAME THING?  TEST IT BY TURNING THIS STEP OFF.
+        ; is expand() even necessary?
+        if 0 then begin
+          if imatch eq !NULL && observed_time ge first_time && observed_time le last_time then begin
+            imatch = 1+max(where(tc_times[itrack,*] le observed_time))
+            newlon       = interpol(     tc_lons[itrack,imatch-1:imatch], tc_times[itrack,imatch-1:imatch], observed_time)
+            newlat       = interpol(     tc_lats[itrack,imatch-1:imatch], tc_times[itrack,imatch-1:imatch], observed_time)
+            newintensity = interpol(tc_intensity[itrack,imatch-1:imatch], tc_times[itrack,imatch-1:imatch], observed_time)
+            if finite(tc_lons[itrack,-1]) then begin
+              ; expand time dimension by 1 to allow for new point.
+              ; last element should be unfilled
+              tc_lons = expand(tc_lons)
+              tc_lats = expand(tc_lats)
+              tc_times = expand(tc_times)
+              tc_intensity = expand(tc_intensity)
+            endif
+            tc_lons[itrack,imatch:*]      = shift(     tc_lons[itrack,imatch:*],1)
+            tc_lats[itrack,imatch:*]      = shift(     tc_lats[itrack,imatch:*],1)
+            tc_intensity[itrack,imatch:*] = shift(tc_intensity[itrack,imatch:*],1)
+            tc_times[itrack,imatch:*]     = shift(    tc_times[itrack,imatch:*],1)
+            tc_lons[itrack,imatch]      =        newlon
+            tc_lats[itrack,imatch]      =        newlat
+            tc_intensity[itrack,imatch] =  newintensity
+            tc_times[itrack,imatch]     = observed_time
           endif
-          tc_lons[itrack,imatch:*]      = shift(     tc_lons[itrack,imatch:*],1)
-          tc_lats[itrack,imatch:*]      = shift(     tc_lats[itrack,imatch:*],1)
-          tc_intensity[itrack,imatch:*] = shift(tc_intensity[itrack,imatch:*],1)
-          tc_times[itrack,imatch:*]     = shift(    tc_times[itrack,imatch:*],1)
-          tc_lons[itrack,imatch]      =        newlon
-          tc_lats[itrack,imatch]      =        newlat
-          tc_intensity[itrack,imatch] =  newintensity
-          tc_times[itrack,imatch]     = observed_time
         endif
 
         displacement_m = map_2points(obs.lon[itime], obs.lat[itime], tc_lons[itrack, imatch], tc_lats[itrack, imatch], /meters)
@@ -315,7 +326,7 @@ pro find_matching_model_track, bdeck_file, model=model, force_new=force_new, deb
             print, 'at', string(tc_times[itrack,imatch], format='(c(CMoI,"/",CDI," ",CHI),"Z",$)'), $
               ' track ',tc_id[itrack]+ ' > 1 day && observed Best Track has been TS strength ', $
               'but still ', string(displacement_m/1000,format='(I0)'), ' km away. Skipping'
-      
+
           endif
           break ; if model is beyond 1 day and Best Track has reached TS strength and no match then skip this track
         endif
