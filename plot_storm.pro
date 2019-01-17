@@ -62,7 +62,7 @@ pro plot_storm, adeck_file, bdeck_file=bdeck_file, model=model, ofile=ofile, $
   if ~keyword_set(toplot) then toplot = 'vmax'
   if ~keyword_set(ofile) then ofile = file_dirname(adeck_file)+'/'+file_basename(adeck_file,'.dat')+'.'+toplot+'.png'
   if n_elements(force_new) eq 0 then force_new = 0
-  if file_test(ofile) eq 1 and not force_new then begin
+  if file_test(ofile) eq 1 and ~force_new then begin
     print, "found "+ofile+". skipping"
     return
   endif
@@ -87,7 +87,7 @@ pro plot_storm, adeck_file, bdeck_file=bdeck_file, model=model, ofile=ofile, $
   obs = read_atcf(bdeck_file, tech=tech)
   obstimes = obs.twod.valid_time[*,0] ; Get 1-d array of times from 2-d array of julian day times
 
-  if not obs.IsEmpty() then begin
+  if ~ obs.IsEmpty() then begin
     max_vmax=max(obs.vmax) ; storm name taken from the time with greatest vmax.
     ; there can be multiple times with maximum wind. use the latest one. This helps al082014 (HANNA)
     ; it is only INVEST for the first time it reaches max wind speed but becomes HANNA later.
@@ -248,7 +248,7 @@ pro plot_storm, adeck_file, bdeck_file=bdeck_file, model=model, ofile=ofile, $
   lineplot_day_label = symbol(obstimes, obs.twod[toplot], /data, label_string=day_str(obstimes), $
     label_color='white', label_position='C', label_font_size=3.8, target=lineplot)
 
-  if not obs.IsEmpty() then begin
+  if ~ obs.IsEmpty() then begin
     ; if it errors here, enclose obs.lon and obs.lat in square brackets (to make arrays)
     ; otherwise you get an error about "input must be array or format string".
     ; this needed for TC FOUR in Indian Ocean in 2018 . apparently it only had one time in obs structure
