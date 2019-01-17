@@ -42,7 +42,8 @@ function matches_a_best_track, track, best_track=best_track
 
     if adeck_file_info.mtime lt track_info.mtime then begin
       print, 'adeck file '+adeck_file+' should be modified after tracks file '
-      print, 'track file ', systime(0,track_info.mtime)
+      print, 'track file ', tracks_file, systime(0,track_info.mtime)
+      print, '           ', systime(0,track_info.mtime)
       print, 'adeck file ', systime(0,adeck_file_info.mtime)
       print, 'run find_matching_model_track?'
       stop
@@ -399,7 +400,7 @@ pro run_get_all_model_vitals, date=date, trackername=trackername, debug=debug, $
     ; changed model_name to 'observed' temporarily. June 21 2015.
     model_or_observed = model_name + '_vmax.ge.' + string(round(vmax_thresh_kt),format='(I2)') + 'kt.observed';+model_name;  + model_name ; 'observed' or model_name
     for b = 0,nbasin-1 do begin
-      basin = basins[b]
+      basin = STRUPCASE(basins[b]) ; Force uppercase so keyword entry can be lowercase or uppercase 
       ofile = '/glade/work/ahijevyc/tracking_'+trackername+'/'+model_or_observed+'.'+basin+'_tracks_and_histograms'+$
         string(start_ymd,final_ymd,format='(C(CYI4.4,CMoI2.2,CDI2.2,CHI2.2),"-",C(CYI4.4,CMoI2.2,CDI2.2,CHI2.2))')+ $
         dxdetails + string(min_duration_days, min_warmcore_fract, format='("_",F3.1,"d_minimum.min_warmcore_fract",F4.2)') +'.ps'
