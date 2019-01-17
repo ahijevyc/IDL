@@ -118,7 +118,7 @@ deg2rad=!pi/180.	; multiply degrees by this factor to get radians
 wsknots=wspeed/kn2mpsec	; wind speed in knots
 
 ; create a circle user symbol for the symbol origin
-IF NOT keyword_set(nocircle) THEN BEGIN
+IF ~keyword_set(nocircle) THEN BEGIN
    a=findgen(49)*(!pi*2/48.)
    IF keyword_set(device) THEN $
       usersym,scale/24.*cos(a),scale/24.*sin(a),/fill $

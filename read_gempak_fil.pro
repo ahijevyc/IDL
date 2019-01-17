@@ -9,10 +9,10 @@ function read_gempak_fil, file, datastart=datastart
     datastart = 0
     openr, lun, file, /get_lun
     line = ''
-    while not eof(lun) do begin
+    while ~eof(lun) do begin
       readf, lun, line
       ; If line has a digit and no letters or equal signs, assume it is data, not header
-      if strmatch(line, '*[0-9]*') and not strmatch(line, "*[a-z=]*", /fold) then break
+      if strmatch(line, '*[0-9]*') and ~strmatch(line, "*[a-z=]*", /fold) then break
       datastart = datastart + 1
     endwhile
     free_lun, lun

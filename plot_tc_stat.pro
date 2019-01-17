@@ -12,9 +12,9 @@ function read_max_vmax_comparison, file
     FIELDGROUPS:lindgen(14) }
 
   u = read_ascii(file, template=template)
-  if not array_equal(u.INIT, u.F10) then stop ; init
-  if not array_equal(u.STORM_ID, u.F11) then stop ; stormid
-  if not array_equal(u.AMODEL, u.F12) then stop ; amodel
+  if ~ array_equal(u.INIT, u.F10) then stop ; init
+  if ~ array_equal(u.STORM_ID, u.F11) then stop ; stormid
+  if ~ array_equal(u.AMODEL, u.F12) then stop ; amodel
   t = {amax_wind: u.max_amax_wind,  storm_id: u.storm_id, amodel:u.amodel, BMAX_WIND:u.max_bmax_wind, $
     basin:strmid(u.storm_id,0,2), init:u.init}
   return, t

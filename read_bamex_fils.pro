@@ -4,7 +4,7 @@ pro read_bamex_fils
   ; see email attachment iop8_dropsonde.dat from Jul 6, 2017
   atmos_const
   infile = '~/iop8_dropsonde.dat'
-  if not file_test(infile) then stop
+  if ~ file_test(infile) then stop
   outfile = infile + '.out'
   close, /all
   openw, lun, outfile, /get_lun

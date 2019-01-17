@@ -174,7 +174,7 @@ pro find_matching_model_track_old, bdeck_file, model=model, trackfield=trackfiel
         intensity=mcv_intensity, id=mcv_id)
       specs = {tracker:'gfdl'}
     endif else restore, model_tracks_files[iinit] ; branch for custom tracker find_maxima.F
-    if not isa(model,'Anonymous') then stop; make sure model is a structure.
+    if ~ isa(model,'Anonymous') then stop; make sure model is a structure.
     
     matching_model_tracks = LIST()
     ; Loop through each model_track in the model tracks file

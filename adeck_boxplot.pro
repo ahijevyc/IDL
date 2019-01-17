@@ -21,7 +21,7 @@ pro ADECK_boxplot
     if file_test(event_equal_file) eq 0 then begin
       cd, basedir
       ; sanity check. assumes first models entry is variable MPAS and 2nd is GFS
-      if not strmatch(models[0],"MP*") or models[1] ne "GFSO" then stop
+      if ~strmatch(models[0],"MP*") or models[1] ne "GFSO" then stop
       cmd = "tc_stat -lookin " + models[0] + "_0.500deg_025km_gfdl_origmeshTrue_1.0d_minimum"+misc_str+".tcst "
       GFSgrid = '_0.500deg' 
       if year eq 2016 then GFSgrid = '_0.250deg'

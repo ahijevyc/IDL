@@ -318,9 +318,9 @@ pro plot_ascat_winds, inpsfile, files, latmin, latmax, lonmin, lonmax, fcst_day=
     ; According to ASCAT user manual: It is recommended not to use WVCs with the monitoring flag,
     ; the KNMI quality control flag or the variational quality control flag set.
     ibox = where(lon ge lonmin and lon le lonmax and lat ge latmin and lat le latmax $
-      and not flags.PRODUCT_MONITORING_EVENT_FLAG $
-      and not flags.KNMI_QUALITY_CONTROL_FAILS $
-      and not flags.VARIATIONAL_QUALITY_CONTROL_FAILS, nbox)
+      and ~flags.PRODUCT_MONITORING_EVENT_FLAG $
+      and ~flags.KNMI_QUALITY_CONTROL_FAILS $
+      and ~flags.VARIATIONAL_QUALITY_CONTROL_FAILS, nbox)
 
     ; This is ugly but I had to come up with a way to plot both ascending and descending passes
     ; in QS Quickscat files. They are named differently and everything.

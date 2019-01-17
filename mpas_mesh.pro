@@ -37,14 +37,14 @@ pro make_quickie
         ncdf_varget, ncid, ncdf_varid(ncid, 'lon_0'), lon
         ncdf_varget, ncid, ncdf_varid(ncid, 'lat_0'), lat
         result = ncdf_varinq(ncid, ncdf_varid(ncid,'VGRD_P0_L103_GLL0')); float VGRD_P0_L103_GLL0(lv_HTGL9, lat_0, lon_0)
-        if not array_equal(result.dim, [ncdf_dimid(ncid,'lon_0'),ncdf_dimid(ncid,'lat_0'),ncdf_dimid(ncid,'lv_HTGL9')]) then stop
+        if ~ array_equal(result.dim, [ncdf_dimid(ncid,'lon_0'),ncdf_dimid(ncid,'lat_0'),ncdf_dimid(ncid,'lv_HTGL9')]) then stop
       endif
       if mpas_name eq 'GFS' then begin
         ncid = ncdf_open(basedir+mpas_name+'/2017082000/gfs.t00z.pgrb2.0p25.f000.nc')
         ncdf_varget, ncid, ncdf_varid(ncid, 'lon_0'), lon
         ncdf_varget, ncid, ncdf_varid(ncid, 'lat_0'), lat
         result = ncdf_varinq(ncid, ncdf_varid(ncid,'VGRD_P0_L103_GLL0')); float VGRD_P0_L103_GLL0(lv_HTGL9, lat_0, lon_0)
-        if not array_equal(result.dim, [ncdf_dimid(ncid,'lon_0'),ncdf_dimid(ncid,'lat_0'),ncdf_dimid(ncid,'lv_HTGL7')]) then stop
+        if ~ array_equal(result.dim, [ncdf_dimid(ncid,'lon_0'),ncdf_dimid(ncid,'lat_0'),ncdf_dimid(ncid,'lv_HTGL7')]) then stop
         parent_id = '0p25'
         landmask = replicate(0, [lon.length, lat.length])
       endif
@@ -116,11 +116,11 @@ pro make_quickie
       for iinit=1,nfiles-1 do begin
         i = mpas_read(initnc_files[iinit])
         nCells = i["latCell","dim_sizes"]
-        if not array_equal(latCell, i["latCell","value"]) then stop
-        if not array_equal(lonCell, i["lonCell","value"]) then stop
-        if not array_equal(nEdgesOnCell, i["nEdgesOnCell","value"]) then stop
+        if ~ array_equal(latCell, i["latCell","value"]) then stop
+        if ~ array_equal(lonCell, i["lonCell","value"]) then stop
+        if ~ array_equal(nEdgesOnCell, i["nEdgesOnCell","value"]) then stop
         if mean(abs(areaCell - i["areaCell","value"])) gt 15174080./ncells then stop
-        if not array_equal(cellsOnCell, i["cellsOnCell","value"]) then stop
+        if ~ array_equal(cellsOnCell, i["cellsOnCell","value"]) then stop
         if mean(abs(landmask - i["landmask","value"])) gt 12./ncells then stop ; landmask needed by mpas_water_budget.pro
         if total(parent_id eq i["parent_id"]) eq 0 then parent_id = [parent_id, i["parent_id"]]
       endfor
