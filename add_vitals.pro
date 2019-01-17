@@ -51,9 +51,9 @@ function add_vitals, model_tracks, mpas, origmesh=origmesh, model_basedirs=model
   ; fixed this by converting output of find_matching_model_track to a list() 20140718
 
   ; First take care of origmesh=False. Don't get original mesh values for this IF block
-  if not isa(origmesh, /string) then begin
+  if ~isa(origmesh, /string) then begin
     if origmesh eq 0 then begin
-      if not strmatch(model_tracks[0].tracks_file, '*fort.[5-9]*') then stop ; was in if-test above. don't know why.
+      if ~strmatch(model_tracks[0].tracks_file, '*fort.[5-9]*') then stop ; was in if-test above. don't know why.
       foreach model_track, model_tracks, itrack do begin
         t = read_atcf(model_track.tracks_file) ; read_atcf returns 'vmax' tag in knots and mslp in hPa
         nm2km = 1.852
@@ -157,6 +157,7 @@ function add_vitals, model_tracks, mpas, origmesh=origmesh, model_basedirs=model
     fill_vitals, mpas, tc_nearestCells[vital_itimes], init_date, vitals_times[itime], vitals, vital_itimes, $
       model_basedirs, model_file=model_file, ignore_parent_id=ignore_parent_id, debug=debug, $
       lon0=lons[vital_itimes], lat0=lats[vital_itimes]
+    if debug && model_file eq !NULL then print, vitals_times[itime],' model_file=', model_file
     model_files.add, model_file
   endfor
 
