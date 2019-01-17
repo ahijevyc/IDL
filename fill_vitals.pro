@@ -78,7 +78,7 @@ pro fill_vitals, mpas, iCells, init_date, valid_time, vitals, vital_itimes, mode
 
   if nfiles eq 0 then begin
     print, "fill_vitals: no " +model_basedirs + diag_datestr
-    model_file = ''
+    model_file = !NULL
     return
   endif
 
@@ -96,7 +96,7 @@ pro fill_vitals, mpas, iCells, init_date, valid_time, vitals, vital_itimes, mode
   print, "fill_vitals: opened "+model_file
 
 
-  if not ignore_parent_id then begin
+  if ~ignore_parent_id then begin
     tmp = ncdf_attinq(ncid, "parent_id", /global)
     if tmp.DATATYPE ne "UNKNOWN" then begin
       ; Sanity check
@@ -112,7 +112,7 @@ pro fill_vitals, mpas, iCells, init_date, valid_time, vitals, vital_itimes, mode
       foreach parent_id, mpas.parent_id do begin
         if strpos(model_file_parent_id, parent_id) ne -1 then matchinit = 1
       endforeach
-      if not matchinit then begin
+      if ~matchinit then begin
         print, "looking for init.nc mesh parent_id "+mpas.parent_id+" in model file parent_id"
         print, 'init.nc mesh parent_id not in '+model_file_parent_id
         stop
