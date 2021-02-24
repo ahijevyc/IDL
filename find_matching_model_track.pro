@@ -40,15 +40,6 @@ pro run_find_matching_model_track, debug=debug, force_new=force_new, model=model
 
 end
 
-function expand, x
-  dim = size(x, /dim)
-  ntracks = dim[0]
-  ntimes = dim[1]
-  ; one extra time on end, set to NaN
-  y = replicate(!VALUES.D_NAN, [ntracks,ntimes+1])
-  for itrack=0,ntracks-1 do y[itrack,0:ntimes-1] = x[itrack,*]
-  return, y
-end
 
 function get_time_distance_thresh, forecast_hour_in
   ; Values for E(t) are taken from the following plot, using the 95th percentile error of the NHC $
@@ -74,7 +65,7 @@ pro find_matching_model_track, bdeck_file, model=model, force_new=force_new, deb
   if n_elements(trackertype) eq 0 then trackertype = 'tcgen'
   min_duration_days = 1.d  ; minimum duration of model model_track to consider (unless observation is on boundary of model time window)
   if ~keyword_set(force_new) then force_new = 0 ; force_new=1 forces atcf file and vitals save file to be remade.
-  if n_elements(bdeck_file) eq 0 then bdeck_file = '/glade/work/ahijevyc/atcf/bwp082018.dat'
+  if n_elements(bdeck_file) eq 0 then bdeck_file = '/glade/work/ahijevyc/atcf/bal062018.dat'
   parent_id = '9qw58wx10r'
   if ~keyword_set(model) then model = mpas_mesh('uni') else if isa(model,/scalar) then model=mpas_mesh(model)
   total_model_days = strmatch(model.name, 'GFS*') ? 8d : 10d
@@ -111,6 +102,7 @@ pro find_matching_model_track, bdeck_file, model=model, force_new=force_new, deb
 
   ; Read observed best track file
   if file_test(bdeck_file, /zero) eq 1 then return
+  ; print_atcf will use characters in columns 2-3 of file_basename(bdeck_file) for basin name
   year     = strmid(file_basename(bdeck_file),5,4)
   storm_id = strmid(file_basename(bdeck_file),1,8)
   ; if BDECK, use 'BEST', otherwise use 'CARQ', unless it's w. pacific--then use 'WRNG'
@@ -130,7 +122,6 @@ pro find_matching_model_track, bdeck_file, model=model, force_new=force_new, deb
     return
   endif
 
-  ; print_atcf will use characters in columns 2-3 of file_basename for basin name
   ; if you change "fiorino" path, make sure you also change it where model_tracks_files is
   ; defined below (fort.64 path)
   my_atcf_file = '/glade/work/ahijevyc/tracking_'+tracker+'/adeck/'+ model.name + $
@@ -192,7 +183,7 @@ pro find_matching_model_track, bdeck_file, model=model, force_new=force_new, deb
   for iinit = 0, n_elements(model_tracks_files)-1 do begin
     init_time = model_tracks_file_juldays[iinit]
     init_date = string(init_time, format='(C(CYI4.4, CMoI2.2, CDI2.2, CHI2.2))')
-    if init_date ne '2018060700' then continue
+    ;if init_date ne '2018090700' then continue
 
     ; Read entire atcf file (usually fort.64 or fort.66)
     ; gfdl_m dictionary will have a 1-D array for each atcf column
@@ -269,43 +260,6 @@ pro find_matching_model_track, bdeck_file, model=model, force_new=force_new, deb
         ; Does this model model_track exist at this observed time?
         imatch = where(abs(tc_times[itrack,*] - observed_time) lt 1/24d, nmatch, /null)
         if nmatch gt 1 then stop
-        ; If the observed time is within the model_track time window, but doesn't match
-        ; a model_track time exactly, then interpolate model_track lat/lon/intensity to observed time
-        ; and insert the interpolated values in the tc_lats,tc_lons,tc_itensity,tc_times arrays
-        ; I could use great circle interpolation but for small distances, it shouldn't matter.
-        ;
-        ; This is a problem when the model has no output at this time. But is needed when
-        ; the matching model track is a composite of more than one model track.
-        ; It works for origmesh=0, as we don't need a diagnostic model data at this
-        ; time, but not necessarily for origmesh=1.  If you have a strange observed time, like 01Z
-        ; (for landfall point, for example), when there is no model output file, how do you handle
-        ; the intensity? Deal with this later in add_vitals.
-        ; BUT WAIT! DOESN'T JOIN_MODEL_TRACKS DO THE SAME THING?  TEST IT BY TURNING THIS STEP OFF.
-        ; is expand() even necessary?
-        if 0 then begin
-          if imatch eq !NULL && observed_time ge first_time && observed_time le last_time then begin
-            imatch = 1+max(where(tc_times[itrack,*] le observed_time))
-            newlon       = interpol(     tc_lons[itrack,imatch-1:imatch], tc_times[itrack,imatch-1:imatch], observed_time)
-            newlat       = interpol(     tc_lats[itrack,imatch-1:imatch], tc_times[itrack,imatch-1:imatch], observed_time)
-            newintensity = interpol(tc_intensity[itrack,imatch-1:imatch], tc_times[itrack,imatch-1:imatch], observed_time)
-            if finite(tc_lons[itrack,-1]) then begin
-              ; expand time dimension by 1 to allow for new point.
-              ; last element should be unfilled
-              tc_lons = expand(tc_lons)
-              tc_lats = expand(tc_lats)
-              tc_times = expand(tc_times)
-              tc_intensity = expand(tc_intensity)
-            endif
-            tc_lons[itrack,imatch:*]      = shift(     tc_lons[itrack,imatch:*],1)
-            tc_lats[itrack,imatch:*]      = shift(     tc_lats[itrack,imatch:*],1)
-            tc_intensity[itrack,imatch:*] = shift(tc_intensity[itrack,imatch:*],1)
-            tc_times[itrack,imatch:*]     = shift(    tc_times[itrack,imatch:*],1)
-            tc_lons[itrack,imatch]      =        newlon
-            tc_lats[itrack,imatch]      =        newlat
-            tc_intensity[itrack,imatch] =  newintensity
-            tc_times[itrack,imatch]     = observed_time
-          endif
-        endif
 
         displacement_m = map_2points(obs.lon[itime], obs.lat[itime], tc_lons[itrack, imatch], tc_lats[itrack, imatch], /meters)
         ; if this is within the first day of the observed or model track, see if track is close enough to match
@@ -412,7 +366,7 @@ pro find_matching_model_track, bdeck_file, model=model, force_new=force_new, deb
       if debug eq 0 then begin
         if start_new_atcf_output_file then openw, atcf_lun, my_atcf_file, /get_lun
         start_new_atcf_output_file=0
-        print_atcf, atcf_lun, my_atcf_file, matching_model_track, debug=debug
+        print_atcf, atcf_lun, matching_model_track, debug=debug
       endif
 
     endelse

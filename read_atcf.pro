@@ -83,8 +83,9 @@ function read_atcf, file, lats=lat2D, lons=lon2D, valid_time=valid_time2D, inten
   readf, lun, b
   free_lun, lun
   words = strsplit(b,',',/extract)
+  simpleadeckwith11columns = n_elements(words) eq 11 ; no rad column. that's okay
   matches_fort66 = strmatch(b, '*, *, ????????00_F???_????_?????_*,*') eq 1 || file_basename(file) eq 'fort.66'
-  matches_fort64 = strmatch(b, 'THERMO PARAMS,') eq 1 || file_basename(file) eq 'fort.64' || n_elements(words) eq 23
+  matches_fort64 = strmatch(b, 'THERMO PARAMS,') eq 1 || file_basename(file) eq 'fort.64' ;sometimes legitimate atcf bdecks are 23 columns || n_elements(words) eq 23
 
   template = atcf_template
   if matches_fort66 then template = fort66_template
@@ -149,6 +150,10 @@ function read_atcf, file, lats=lat2D, lons=lon2D, valid_time=valid_time2D, inten
   t.lat    = lat
   t.lon    = lon
   t.storm_spd_ms = storm_spd_ms
+  pmin = t.mslp
+  i = where(pmin lt 850, n) ; ADECK OFCL pmin forecast is zero (except fh=3). Don't interpret zero as real number.
+  if n gt 0 then pmin[i] = !VALUES.F_NAN
+  t.mslp = pmin
 
   ; sort by basin + storm number (CY)
   ; Added basin Dec 11 2016. to allow two storms with same storm number
@@ -216,8 +221,9 @@ function read_atcf, file, lats=lat2D, lons=lon2D, valid_time=valid_time2D, inten
     ;   nt = 1
     ; endif else icy = where(storms eq stormid and (storms ne shift(storms,1) or t.valid_time ne shift(t.valid_time,1)), nt, /null)
 
-    ; why filter by rad? twod arrays are expected to only have 0 & 34-kt wind lines.
-    icy = where(storms eq stormid and (t.rad eq 0 or t.rad eq 34), nt, /null)
+    ; Filter by rad because twod arrays are expected to only have 0 & 34-kt wind lines.
+    ; if it is a simple 11-column adeck then it has no rad column to filter. That's okay.
+    icy = where(storms eq stormid and (simpleadeckwith11columns or t.rad eq 0 or t.rad eq 34), nt, /null)
     if icy eq !NULL then begin
       print, stormid, " no 0 or 34-kt wind lines. Did you filter them out with rad keyword?"
       stop

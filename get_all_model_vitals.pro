@@ -112,14 +112,22 @@ pro get_all_model_vitals, model_name=model_name, date=date, trackername=trackern
     return
   endif
   model_tracks_file = model_tracks_files[0]
+  
   ; open false alarms file
   false_alarms_file = file_dirname(model_tracks_file)+ "/false_alarms_" + basin + $
     string(vmax_thresh_kt,format='(".vmax_thresh_kt.ge.",I2.2,".dat")')
+  false_alarms_file_tmp = false_alarms_file + ".tmp"
 
+  ; Skip if false alarm temporary file exists
+  if file_test(false_alarms_file_tmp) then begin
+    print, 'temporary file ', false_alarms_file_tmp, ' exists. skipping.'
+    return
+  endif
   ; Skip if false alarm file exists and is modified later than model tracks file.
-  if file_test(false_alarms_file) eq 0 || $
+  if ~file_test(false_alarms_file) || $
     (file_info(false_alarms_file)).mtime le (file_info(model_tracks_files[0])).mtime then begin
-    openw, fa_lun, false_alarms_file+'.tmp', /get_lun
+    ; Create temporary false alarm file.
+    openw, fa_lun, false_alarms_file_tmp, /get_lun
   endif else begin
     print, basin+" basin false alarms file exists, newer than "+model_tracks_files[0]+" skipping."
     print, 'false alarms file: '+ false_alarms_file
@@ -207,6 +215,7 @@ pro get_all_model_vitals, model_name=model_name, date=date, trackername=trackern
     model_tracks.add, {itrack:itrack, tracks_file:model_tracks_file, init_time:init_time, init_date:date, $
       lon:lons, lat:lats, valid_time:reform(mcv_times[itrack,0:last_itime]), intensity:intensity, $
       specs:specs, model_name:mpas.name, min_duration_days:min_duration_days, in_tropics:in_tropics, $
+      basin:mybasin, $
       id:mcv_id[itrack], min_warmcore_fract:min_warmcore_fract, trackertype:trackertype}
 
     ;    for iseg = 0, n_elements(model_tracks[-1].lat)-2 do $
@@ -230,7 +239,7 @@ pro get_all_model_vitals, model_name=model_name, date=date, trackername=trackern
   model_tracks = add_vitals(model_tracks, mpas, origmesh = origmesh)
   ; vmax will be in m/s.  It is returned as knots by read_atcf() but add_vitals converts it to m/s.
 
-  ; Filter by basin, max wind attained in tropics, and warmcore fraction-of-time
+  ; Filter by max wind attained in tropics (needed to add_vitals() first)
   for itrack=0,model_tracks.count()-1 do begin
     track = model_tracks[itrack]
 
@@ -268,7 +277,7 @@ pro get_all_model_vitals, model_name=model_name, date=date, trackername=trackern
     ; (Chris's contact). But now, also for TC verification paper.
     if row eq farow then begin
       if debug then print, 'false alarm: '+track.id
-      print_atcf, fa_lun, 'a'+mybasin+'XX', track
+      print_atcf, fa_lun,  track
     endif
 
     ; draw track
@@ -315,10 +324,10 @@ pro get_all_model_vitals, model_name=model_name, date=date, trackername=trackern
 
   endfor ; filter and classify each track
   free_lun, fa_lun
-  ; Remove .tmp from false alarm file, signifying the program is finished.
-  file_move, false_alarms_file+'.tmp', false_alarms_file
+  ; Rename temporary false alarm file, signifying the program is finished.
+  file_move, false_alarms_file_tmp, false_alarms_file
 
-end
+end ; get_all_model_vitals
 
 pro run_get_all_model_vitals, date=date, trackername=trackername, debug=debug, $
   min_duration_days=min_duration_days, min_warmcore_fract=min_warmcore_fract, basins=basins, $
@@ -395,7 +404,7 @@ pro run_get_all_model_vitals, date=date, trackername=trackername, debug=debug, $
     final_ymd = final_ymd < systime(/julian, /utc) ; no later than current time
     if debug then print, "final date range ", string(start_ymd, final_ymd, format='(c())')
     yyyymmddhh = string(timegen(start=start_ymd, final=final_ymd, step=model_name eq 'GFS' ? 0.25 : 1), format='(C(CYI4.4,CMoI2.2,CDI2.2,CHI2.2))')
-    if ~keyword_set(basins) then basins = ['WP','AL','EP']
+    if ~keyword_set(basins) then basins = ['WP','AL','EP','CP','IO']
     nbasin=n_elements(basins)
     ; changed model_name to 'observed' temporarily. June 21 2015.
     model_or_observed = model_name + '_vmax.ge.' + string(round(vmax_thresh_kt),format='(I2)') + 'kt.observed';+model_name;  + model_name ; 'observed' or model_name

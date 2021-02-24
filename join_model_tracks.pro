@@ -11,7 +11,8 @@ function join_model_tracks, model_tracks, observed_times_in
 
   ; join the model_tracks from tip to tail and interpolate to observed_times
   
-  ; Make sure tracks_file, init_time, init_date, model_name, bdeck_file, stormname, min_duration_days, and min_warmcore_fract
+  ; Make sure tracks_file, init_time, init_date, model_name, bdeck_file, stormname, 
+  ; min_duration_days, and min_warmcore_fract
   ; match for all model_tracks.
   ; removed "specs" keyword Oct 2015
   model_track0 = model_tracks[0]
@@ -27,6 +28,8 @@ function join_model_tracks, model_tracks, observed_times_in
     if model_track.min_warmcore_fract ne model_track0.min_warmcore_fract then stop
   endfor
   
+  
+  ; join the model_tracks from tip to tail
   itrack  = !NULL
   lons  = !NULL
   lats  = !NULL
@@ -59,11 +62,12 @@ function join_model_tracks, model_tracks, observed_times_in
   lons       = interpol_nan(     lons, valid_times, all_valid_times, /circle)
   if not array_equal(old_lons, lons) then begin
     print, 'after fixing longitude interpolation, they changed'
-    print, old_lons
     print, lons
     biggest_difference = max(abs(old_lons-lons))
-    if biggest_difference gt 0.00001 then print, old_lons-lons
-    if biggest_difference gt 0.002 then begin
+    if biggest_difference gt 0.0001 then print, 'biggest difference=', biggest_difference
+    if biggest_difference gt 0.01 then begin
+      print, old_lons
+      print, lons
       print, old_lons-lons
       stop
     endif

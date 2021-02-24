@@ -1,15 +1,22 @@
 pro veer_track
-  track = read_atcf('/glade/work/ahijevyc/atcf/bal112015.dat')
-  
+  ;track = read_atcf('/glade/work/ahijevyc/atcf/bal112015.dat')
+  track = read_atcf('/glade/work/ahijevyc/atcf/archive/2018/bal142018.dat')
+ 
   ; The angles really add up.  
   ; So you may skip the first [skip] track segments.
   ; and wait until you are closer to landfall to start veering.
-  skip=10 ; # of track segments to skip
-  t2 = {}
-  for itag = 0,n_tags(track)-1 do begin
-    t2 = create_struct((tag_names(track))[itag], (track.(itag))[skip:*], t2)
-  endfor
-  track = t2
+  skip=0 ; # of track segments to skip
+  if skip then begin
+      foreach key, track.keys() do begin
+        ;print, key
+        if key eq "TWOD" or key eq "ID" then begin
+            ; TODO: figure out syntax. TWOD not needed. 
+            ;foreach key2, track[key].keys() do (track[key])[key2] = ((track[key])[key2])[skip:*]
+        endif else begin
+            track[key] = (track[key])[skip:*]
+        endelse
+      endforeach
+  endif
 
   m = map('Mollweide', fill_color='alice blue', limit=[min(track.lat)-10,min(track.lon)-10,max(track.lat)+10,max(track.lon)+10],margin=[0.1,0.1,0.2,0.1],/current)
   grid = m.MAPGRID & grid.thick=0 & grid.linestyle = 'dotted' & grid.LABEL_POSITION = 0
