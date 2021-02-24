@@ -336,7 +336,7 @@ PRO SKEWT, t_range, everyT=everyT, everyDA=everyDA, prange=prange, $
     newx1=tnew(tmr2,press2) ; Find rotated temperature position
     
     ;  Draw the line.
-    plots, [newx0, newx1], [press1, press2], linestyle=5, $
+    plots, [newx0, newx1], [press1, press2], linestyle=2, $
       clip=clip, noclip=0, color=mixr_color
       
     ;  Draw the line label.

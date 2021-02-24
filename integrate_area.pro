@@ -3,7 +3,8 @@ function integrate_area, i_in, TvDIF_in, TLV_in, p_in, icb_in, cape, cin, bmin=b
   if ~keyword_set(debug) then debug=0
   if ~keyword_set(bmin) then stop ; bmin and bmax are mandatory
   if ~keyword_set(bmax) then stop
-  
+  ytext_displacement = 1.02 ; multiply y by this to move down y axis by constant distance on log axis
+
   
   ; not the best way, but TvDIF_in, TLV_in, cape, cin, and bmax all have a dimension that corresponds
   ; to the origin level of the parcel.
@@ -35,7 +36,7 @@ function integrate_area, i_in, TvDIF_in, TLV_in, p_in, icb_in, cape, cin, bmin=b
     plfcp_exact = (TvDIF[i,iLFC]*p[iLFC-1]-TvDIF[i,iLFC-1]*p[iLFC])/(TvDIF[I,iLFC]-TvDIF[I,iLFC-1])
     tlfcp_exact = TLV[i,iLFC-1] + (TLV[i,iLFC]-TLV[i,iLFC-1])/(P[iLFC]-P[iLFC-1])*(plfcp_exact-p[iLFC-1])
     if plot_points then begin
-      xyouts, tnew(tlfcp_exact-!CONST.T0,plfcp_exact), plfcp_exact, ' LFC', charsize=0.7, charthick=!P.CHARTHICK*0.5, color=208
+      xyouts, tnew(tlfcp_exact-!CONST.T0,plfcp_exact), plfcp_exact*ytext_displacement, ' LFC', charsize=0.7, charthick=!P.CHARTHICK*0.5, color=208
       plots, tnew(tlfcp_exact-!CONST.T0,plfcp_exact), plfcp_exact, psym=1, color=208
     endif
     ;
@@ -61,7 +62,7 @@ function integrate_area, i_in, TvDIF_in, TLV_in, p_in, icb_in, cape, cin, bmin=b
       if debug && INB ne inbold then print, 'pseudo parcel neutral buoy level changed from ',p[inbold],' to', p[INB]
     endif
     if plot_points then begin
-      xyouts, tnew(TLV[i,INB]-!CONST.T0,P[INB]), P[INB], ' NB', charsize=0.7, charthick=!P.CHARTHICK*0.5, color=208
+      xyouts, tnew(TLV[i,INB]-!CONST.T0,P[INB]), P[INB]*ytext_displacement, ' NB', charsize=0.7, charthick=!P.CHARTHICK*0.5, color=208
       plots, tnew(TLV[i,INB]-!CONST.T0,P[INB]), P[INB], psym=1, color=208
     endif
     ;
@@ -102,7 +103,7 @@ function integrate_area, i_in, TvDIF_in, TLV_in, p_in, icb_in, cape, cin, bmin=b
     xs =  [tnew(TLV[i,kbmin]-TvDIF[i,kbmin],p[kbmin]), tnew(TLV[i,kbmin],p[kbmin])]-!CONST.T0
     bmin_c = !D.NAME eq 'X' ? 186 : 28
     plots, xs, replicate(p[kbmin],2), color=bmin_c
-    xyouts, mean(xs), p[kbmin], 'Bmin', align=0.5, color=bmin_c, charsize=0.8
+    xyouts, mean(xs), p[kbmin], 'Bmin', align=0.5, color=bmin_c, charsize=0.4
   endif
   
 

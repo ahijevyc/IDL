@@ -136,6 +136,8 @@ PRO CAPE_SOUND,P_in,T_in,R_in,CAPEP=CAPEP,TVPDIF=TVPDIF,$
   if entrainment_rate lt 0 then stop
   if ~keyword_set(ice) then ice=0
   if ~keyword_set(debug) then debug = 0
+  ytext_displacement = 1.017 ; multiply y by this to move down y axis by constant distance on log axis
+
   show_skewt = debug
   ; show_skewT = 1 just show pseudoadiabatic ascent
   ; show_skewT = 2 show reversible ascent too.
@@ -224,6 +226,8 @@ PRO CAPE_SOUND,P_in,T_in,R_in,CAPEP=CAPEP,TVPDIF=TVPDIF,$
       parcel_r = r[i]
     endif else begin
       ; If parcel_layer_mb is given use average of top and bottom of pressure range.
+      ; TODO: are you sure? I think it is the average through the pressure range, not 
+      ; just top and bottom.
       ; If bottom of layer is below sounding, don't extrapolate below sounding;
       ;  instead use the first pressure p[0] as the bottom of pressure range and shift top pressure up
       ; so full parcel_layer_mb is used. That's how tlift.f does it.
@@ -253,7 +257,8 @@ PRO CAPE_SOUND,P_in,T_in,R_in,CAPEP=CAPEP,TVPDIF=TVPDIF,$
         parcel_t = thetamean*(parcel_p/1000.)^(!ATMOS.Rd/!ATMOS.Cpd)
       endif
       if show_skewt gt 0 then begin
-        tx = temps[0]- !CONST.T0
+        ; Draw parcel depth like letter "I" just to right of warmest part        
+        tx = max(tnew(TvEnv-!CONST.T0, P)) + 1.0 
         dtx = 0.3
         plots, [tx,tx], [ptop,pbot]
         plots, [tx-dtx,tx+dtx], ptop
@@ -335,7 +340,7 @@ PRO CAPE_SOUND,P_in,T_in,R_in,CAPEP=CAPEP,TVPDIF=TVPDIF,$
           icb = j
           if show_skewt gt 0 then begin
             ; Label 'LCL' and add plus sign
-            xyouts, tnew(TLP[i,j-1]-!CONST.T0,pLCL), pLCL, ' LCL', charsize=0.8
+            xyouts, tnew(TLP[i,j-1]-!CONST.T0,pLCL), pLCL*ytext_displacement, ' LCL', charsize=0.67
             plots, tnew(TLP[i,j-1]-!CONST.T0,pLCL), pLCL, psym=1
           endif
         endif
@@ -356,7 +361,7 @@ PRO CAPE_SOUND,P_in,T_in,R_in,CAPEP=CAPEP,TVPDIF=TVPDIF,$
           RG=EPS*ENEW/(P[J]-ENEW)
           if abs(S-SG) lt 0.01 then break
         ENDFOR ; K
-        if abs(S-SG) gt 0.01 && p[j] gt 10. then begin
+        if abs(S-SG) gt 0.01 && p[j] gt 11. then begin
           print, 's and sg did not converge at level',p[j]
           print, s, sg, s-sg
           stop
