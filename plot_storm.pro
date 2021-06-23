@@ -1,8 +1,9 @@
 pro run_plot_storm, force_new = force_new, toplot=toplot, file=file, bdeck_file=bdeck_file, $
     first_time_cutoff=first_time_cutoff, last_time_cutoff=last_time_cutoff, maplimit=maplimit, $
     sym_size=sym_size, debug=debug
-  files = file_search("/glade/work/ahijevyc/tracking_gfdl/adeck/uni/tcgen/a????2017*[ym]", count=nfiles)
-  files = file_search("/glade/scratch/ahijevyc/hwt2017/2017090700/ens*/latlon_0.500deg*/gfdl_tracker/tracker/fort.64.Irma", count=nfiles)
+  ;files = file_search("/glade/work/ahijevyc/tracking_gfdl/adeck/uni/tcgen/a????2017*[ym]", count=nfiles)
+  ;files = file_search("/glade/scratch/ahijevyc/hwt2017/2017090700/ens*/latlon_0.500deg*/gfdl_tracker/tracker/fort.64.Irma", count=nfiles)
+  files = file_search("~/Michael2018.origmesh_scale_Vmax.Knaff_Zehr_Pmin/aal142018.2018??????.dat_origmesh", count=nfiles)
   nfiles = 0 ; finished making raw-mesh atcf
   if ~keyword_set(bdeck_file) then bdeck_file='/glade/work/ahijevyc/atcf/archive/2016/bal092016.dat'
   if ~keyword_set(maplimit) then maplimit=[22, 360-95, 32, 360-78] ; Hermine 2016, Nate 2017, Michael 2018, Barry 2019
