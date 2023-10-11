@@ -1,18 +1,15 @@
-pro run_plot_storm, force_new = force_new, toplot=toplot, file=file, bdeck_file=bdeck_file, $
-    first_time_cutoff=first_time_cutoff, last_time_cutoff=last_time_cutoff, maplimit=maplimit, $
-    sym_size=sym_size, debug=debug
-  ;files = file_search("/glade/work/ahijevyc/tracking_gfdl/adeck/uni/tcgen/a????2017*[ym]", count=nfiles)
-  ;files = file_search("/glade/scratch/ahijevyc/hwt2017/2017090700/ens*/latlon_0.500deg*/gfdl_tracker/tracker/fort.64.Irma", count=nfiles)
-  files = file_search("~/Michael2018.origmesh_scale_Vmax.Knaff_Zehr_Pmin/aal142018.2018??????.dat_origmesh", count=nfiles)
+pro run_plot_storm, file=file, _EXTRA=ex
+  files = file_search("/glade/work/ahijevyc/tracking_gfdl/adeck/uni/tcgen/a????2017*[ym]", count=nfiles)
+  files = file_search("/glade/scratch/ahijevyc/hwt2017/2017090700/ens*/latlon_0.500deg*/gfdl_tracker/tracker/fort.64.Irma", count=nfiles)
   nfiles = 0 ; finished making raw-mesh atcf
   if ~keyword_set(bdeck_file) then bdeck_file='/glade/work/ahijevyc/atcf/archive/2016/bal092016.dat'
   if ~keyword_set(maplimit) then maplimit=[22, 360-95, 32, 360-78] ; Hermine 2016, Nate 2017, Michael 2018, Barry 2019
-  if ~keyword_set(debug) then debug = 0
 
-  for ifile=0,nfiles-1 do plot_storm, files[ifile], ofile=files[ifile]+'.png', /buffer, force_new=force_new, $
+
+  for ifile=0,nfiles-1 do plot_storm, files[ifile], ofile=files[ifile]+'.png', /buffer, $
     output_atcf=file_dirname(files[ifile])+"/"+file_basename(files[ifile],".dat")+".origmeshTrue.dat",$
-    /get_origmesh, model=mpas_mesh('hwt2017'), bdeck_file=bdeck_file, $;  parent_id='qn8h9pp21e.66hrbdndmz'),$
-    first_time_cutoff=first_time_cutoff, last_time_cutoff=last_time_cutoff, maplimit=maplimit, sym_size=sym_size
+    /get_origmesh, model=mpas_mesh('hwt2017'), $;  parent_id='qn8h9pp21e.66hrbdndmz'),$
+    _EXTRA=ex
 
 
   if ~keyword_set(file) then begin 
@@ -27,9 +24,7 @@ pro run_plot_storm, force_new = force_new, toplot=toplot, file=file, bdeck_file=
       file = "/glade/work/ahijevyc/atcf/Hermine2016/aal092016.2016082912.dat"
   endif
 
-  plot_storm, file, get_origmesh=0, model=mpas_mesh('ECMWF', /nomesh), toplot=toplot, output_atcf='', $
-    bdeck_file=bdeck_file, force_new=force_new, $
-    first_time_cutoff=first_time_cutoff, last_time_cutoff=last_time_cutoff, maplimit=maplimit, sym_size=sym_size
+  plot_storm, file, get_origmesh=0, model=mpas_mesh('ECMWF', /nomesh), output_atcf='', _EXTRA=ex
 end
 
 function day_str, atimes
@@ -45,7 +40,8 @@ end
 pro plot_storm, adeck_file, bdeck_file=bdeck_file, model=model, ofile=ofile, $
   title=title, buffer=buffer, force_new=force_new, get_origmesh= get_origmesh, $
   first_time_cutoff=first_time_cutoff, last_time_cutoff=last_time_cutoff, maplimit=maplimit, $
-  tech=tech, toplot=toplot, output_atcf=output_atcf, sym_size=sym_size, debug=debug
+  tech=tech, toplot=toplot, output_atcf=output_atcf, sym_size=sym_size, yrange=yrange, $
+  graylines=graylines, debug=debug
   ; Plot TC track and matching model tracks for one storm.
   ; Plot TC intensity and matching model intensities too.
   ; Requires best track file.
@@ -77,8 +73,9 @@ pro plot_storm, adeck_file, bdeck_file=bdeck_file, model=model, ofile=ofile, $
   if ~keyword_set(toplot) then toplot = 'vmax'
   if ~keyword_set(ofile) then ofile = file_dirname(adeck_file)+'/'+file_basename(adeck_file,'.dat')+'.'+toplot+'.png'
   if n_elements(force_new) eq 0 then force_new = 0
+  if n_elements(graylines) eq 0 then graylines = 0
   if file_test(ofile) eq 1 and ~force_new then begin
-    print, "found "+ofile+". skipping"
+    print, "found "+ofile+" skipping"
     return
   endif
 
@@ -160,8 +157,8 @@ pro plot_storm, adeck_file, bdeck_file=bdeck_file, model=model, ofile=ofile, $
   crud = {sym_filled:1, transparency:0.3, symbol:"circle", sym_transparency:0.3}
 
   lineplot = plot(obstimes, obs.twod[toplot], layout=[1,2,2], $ # placeholder for y-axis title (or else is cut off)
-    sym_size=sym_size, thick=1.5, name=stormname, _extra=crud, xtitle='Date', $
-    title=stormname+" "+tech+" and "+model.name+" tracks "+toplot, /current, $
+    sym_size=sym_size, thick=1.5, name=stormname, _extra=crud, xtitle='date', $
+    title=tech+" and "+model.name, /current, $
     xrange=[min(adeck.valid_time),max(adeck.valid_time)], uvalue=toplot) ; experimented with uvalue - not used.
 
 
@@ -184,6 +181,7 @@ pro plot_storm, adeck_file, bdeck_file=bdeck_file, model=model, ofile=ofile, $
     mytech = strmid(adeck.id[i],14,18) ;differentiate ensemble members and official forecast
     track_name = strmid(adeck.id[i],4,6)+" "+mytech
     color = track_colors[itrack_color]
+    if graylines then color = 'gray'
     if mytech eq "OFCL" then color = [50,30,50]
     thick = 0.6
     time_range = (adeck.twod.valid_time[i,*] ge first_time_cutoff) and (adeck.twod.valid_time[i,*] le last_time_cutoff)
@@ -195,22 +193,6 @@ pro plot_storm, adeck_file, bdeck_file=bdeck_file, model=model, ofile=ofile, $
     endif
     ; Replaced * with ifinite to avoid  arithmetic error: Floating illegal operand
     ifinite = where(finite(adeck.twod.lon[i,*]) and time_range, ntimes, /null)
-    min_duration_days = 0
-    filter_Ryder = 0
-    if filter_Ryder then begin ; ran this block on Ryder's 4-km tracks to filter out short, non-tropical tracks
-      track_name = stid ; good for multiple storms
-      min_duration_days = 3
-      tmp_duration = max(adeck.twod.valid_time[i,ifinite]) - min(adeck.twod.valid_time[i,ifinite])
-      if tmp_duration lt min_duration_days then begin
-        print, id + string(format='(i3)',tmp_duration)+ " days too short, not plotting"
-        continue
-      endif
-      ; use adeck.twodlat, not adeck.lat. lats is 2d lat is 1d. Is there a better naming convention?
-      if min(abs(adeck.twod.lat[i,ifinite])) gt 33. then begin
-        print, id + " poleward of 33, not plotting"
-        continue
-      endif
-    endif
     max_vmax = max(adeck.twod.vmax[i,ifinite])
     if max_vmax lt min_max_vmax then begin
       print, id + " max vmax " + string(max_vmax, format="(F4.1)") + "<" + string(min_max_vmax, format="(F4.0)") +  ", not plotting"
@@ -233,13 +215,20 @@ pro plot_storm, adeck_file, bdeck_file=bdeck_file, model=model, ofile=ofile, $
         5:linestyle="long_dash"
         else: linestyle="solid"
     endcase
+    linestyle="solid"
     model_track_plot = plot(model_track.lon, model_track.lat, /data, _extra=crud, thick=thick, color=color, $
       linestyle=linestyle, sym_size=sym_size, name=track_name, overplot=mapobj)
-    legend_items.add, model_track_plot
+
+    ; Just put some tracks in legend 
+    if not graylines or (i eq 0 or mytech eq "OFCL") then legend_items.add, model_track_plot
+
+    lineplot.sym_size=sym_size/10 
     if mytech eq "OFCL" then begin
         ofcl_timeseries.add, model_track_plot
         model_track_plot.linestyle='dotted'
         model_track_plot.thick=5*thick
+        lineplot.sym_size=sym_size
+        lineplot.title.string = lineplot.title.string + " and OFCL"
     endif
     atimes = model_track.valid_time
     ; label tracks with day of month at 0 UTC.
@@ -265,6 +254,20 @@ pro plot_storm, adeck_file, bdeck_file=bdeck_file, model=model, ofile=ofile, $
         'vmax': xdata = model_track.max_spd10m / !ATMOS.KTS2MPS ; m/s to knots
         'mslp': xdata = model_track.min_slp/100
         'rad34' : xdata = model_track.twod.rad34
+        'rad50' : xdata = model_track.twod.rad50
+        'rad64' : xdata = model_track.twod.rad64
+        'rad341' : xdata = model_track.twod.rad341
+        'rad342' : xdata = model_track.twod.rad342
+        'rad343' : xdata = model_track.twod.rad343
+        'rad344' : xdata = model_track.twod.rad344
+        'rad501' : xdata = model_track.twod.rad501
+        'rad502' : xdata = model_track.twod.rad502
+        'rad503' : xdata = model_track.twod.rad503
+        'rad504' : xdata = model_track.twod.rad504
+        'rad641' : xdata = model_track.twod.rad641
+        'rad642' : xdata = model_track.twod.rad642
+        'rad643' : xdata = model_track.twod.rad643
+        'rad644' : xdata = model_track.twod.rad644
         else: xdata = model_track[toplot]
       endcase
 
@@ -278,7 +281,7 @@ pro plot_storm, adeck_file, bdeck_file=bdeck_file, model=model, ofile=ofile, $
     ; if xdata are all NaN the yrange will extend to zero. not good for minp (mslp)
     if total(finite(xdata)) gt 0 then $
         model_timeseries = plot(atimes, xdata, overplot=lineplot, _extra=crud, $
-          sym_size=model_track_plot.sym_size, thick=model_track_plot.thick, color=model_track_plot.color,$
+          sym_size=lineplot.sym_size, thick=model_track_plot.thick*0.7, color=model_track_plot.color,$
           name=model_track_plot.name, linestyle=model_track_plot.linestyle)
 
   endforeach
@@ -290,12 +293,35 @@ pro plot_storm, adeck_file, bdeck_file=bdeck_file, model=model, ofile=ofile, $
     if yrange[0] lt 900. then yrange[0] = 900.
     lineplot.yrange = yrange
   endif
+  
+  if ~keyword_set(yrange) then begin
+      if toplot eq 'vmax' then begin
+        yrange = lineplot.yrange
+        yrange[0] = 20.
+        lineplot.yrange = yrange
+      endif
+      if strmid(toplot,0,5) eq 'rad34' then yrange = [0,300]
+      if strmid(toplot,0,5) eq 'rad50' then yrange = [0,200]
+      if strmid(toplot,0,5) eq 'rad64' then yrange = [0, 80]
+  endif else lineplot.yrange = yrange
   case toplot of
     'vmax'  : units = "knots"
     'mslp'  : units = "hPa"
     'rad34' : units = "nautical miles"
     'rad50' : units = "nautical miles"
     'rad64' : units = "nautical miles"
+    'rad341' : units = "nautical miles"
+    'rad501' : units = "nautical miles"
+    'rad641' : units = "nautical miles"
+    'rad342' : units = "nautical miles"
+    'rad502' : units = "nautical miles"
+    'rad642' : units = "nautical miles"
+    'rad343' : units = "nautical miles"
+    'rad503' : units = "nautical miles"
+    'rad643' : units = "nautical miles"
+    'rad344' : units = "nautical miles"
+    'rad504' : units = "nautical miles"
+    'rad644' : units = "nautical miles"
     else: units = ""
   endcase
 
@@ -317,7 +343,7 @@ pro plot_storm, adeck_file, bdeck_file=bdeck_file, model=model, ofile=ofile, $
     ; tried target=mapobj and /relative but put in lower left corner of parent window
 
     best_track_modification_time = 'best track ' + bdeck_file + ' last modified ' + systime(0, file_modtime(bdeck_file))
-    mtime_label = text(0,9,/device, best_track_modification_time, font_size=3.5)
+    mtime_label = text(0,6,/device, best_track_modification_time, font_size=3.5)
 
   endif
 
@@ -358,14 +384,14 @@ pro plot_storm, adeck_file, bdeck_file=bdeck_file, model=model, ofile=ofile, $
   ; lineplot_day_label not showing up
   ;lineplot_day_label = symbol(obstimes, obs.twod[toplot], /data, label_string=day_str(obstimes), $
   ;  label_color='white', label_position='C', label_font_size=3.8, target=lineplot)
-  lineplot.ytitle = units
+  lineplot.ytitle = toplot + " (" + units + ")"
 
   symbol_label_explan = text((mapobj.limit)[1], (mapobj.limit)[0], /DATA, $
     ' labeled with day of month at 0 UTC!C model tracks cut off at '+string(last_time_cutoff, format='(C(CYI,CMOI2.2,CDI2.2,X,CHI))')+' UTC', font_size=5.5)
   ; tried target=mapobj and /relative but put in lower left corner of parent window
 
   mapobj.Refresh
-  pretty_TC_intensity, lineplot, toplot=toplot
+  pretty_TC_intensity, lineplot, toplot=toplot, /color
 
 
   junk = timestamp_text(target=lineplot)
