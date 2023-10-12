@@ -11,19 +11,6 @@ pro run_plot_storm, file=file, _EXTRA=ex
     /get_origmesh, model=mpas_mesh('hwt2017'), $;  parent_id='qn8h9pp21e.66hrbdndmz'),$
     _EXTRA=ex
 
-
-  if ~keyword_set(file) then begin 
-      ; plot MPAS ensemble tracks and time series
-      ; on one page - MPAS ensemble dat file created with ~/bin/rename_model.csh, run in /glade/scratch/hwt2017/2017090700/.
-      file = "/glade/u/home/ahijevyc/aal112017.ens.dat"
-      file = "/glade/work/ahijevyc/ADCIRC/IRMA/rmax_nws19.fort.22"
-      file = "/glade/work/ahijevyc/ADCIRC/IRMA/mpas.uni.fort.64"
-      file = "/glade/u/home/ahijevyc/t.64"
-      file = "/glade/work/ahijevyc/ADCIRC/IRMA/WRF.2017090512.atcf"
-      file = "/glade/work/ahijevyc/atcf/Irma2017/0p125/aal112017.2017090812.1hr.dat_origmeshTrue"
-      file = "/glade/work/ahijevyc/atcf/Hermine2016/aal092016.2016082912.dat"
-  endif
-
   plot_storm, file, get_origmesh=0, model=mpas_mesh('ECMWF', /nomesh), output_atcf='', _EXTRA=ex
 end
 
@@ -356,22 +343,16 @@ pro plot_storm, adeck_file, bdeck_file=bdeck_file, model=model, ofile=ofile, $
       horizontal_alignment='right', vertical_spacing = vertical_spacing, sample_width=sample_width)
     l.position = [0.998,0.8]; doesn't work when called with this as keyword.
   endif
+  ; hack for paper figure legend
+  legend_items[0].name = "BEST"
+  legend_items[1].name = "ECMWF"
+  legend_items[1].sym_size=sym_size/10 
+  legend_items[2].name = "OFCL"
+  b = legend(target=legend_items,font_size=font_size*0.9, vertical_alignment=0, shadow=0, $
+    horizontal_alignment='right', vertical_spacing = 0.01, sample_width=0.13)
+  b.position = [1,0.42]; doesn't work when called with this as keyword.
 
   print, stormname
-  if stormname eq 'HARVEY' then begin
-    ; for JOAQUIN cut 40° from east and 20° from north
-    ; limit = [limit[0],limit[1],limit[2]-8,limit[3]-40]
-    ; Irma
-    ;maplimit = [17, 272, 35, 303]
-
-    ;maplimit = [10, 257, 40, 323] ; Harvey plot
-    ;maplimit = [13, 360-105, 33, 360-73] ; 1st zoom for Harvey
-    maplimit = [18, 360-101, 32, 360-84] ; 2nd zoom for Harvey
-    ;maplimit = [12, 267, 43, 323] ; 1st zoom for Rebecca's Irma plot
-    ;maplimit = [17.5, 271, 31, 297] ; 2nd zoom for Rebecca's Irma plot
-    ;maplimit = [22, 275, 28, 284] ; 3nd zoom for AMS talk plot
-  endif
-
   mapobj.limit = maplimit
 
   ; Set time range for x axis.
